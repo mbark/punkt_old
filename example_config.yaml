@@ -1,0 +1,14 @@
+backends:
+  brew: 'backends/brew.yaml'
+  yarn: 'backends/yarn.yaml'
+
+symlinks:
+  'b.txt': 'a.txt'
+  'dir/b.txt': 'a.txt'
+
+tasks:
+  # This will install brew and all packages
+  - dotool: brew
+  - yarn: config set repository 'artifactory.maxm.se:4873'
+  - dotool: yarn
+  - shell: echo 'hello'
