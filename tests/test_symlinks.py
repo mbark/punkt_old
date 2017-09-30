@@ -69,3 +69,26 @@ def test_fails_if_file_already_exists(tmpdir, goot):
     conf_file = create_conf_file(d, conf)
     res = goot.run(conf_file)
     assert res.returncode != 0
+
+
+def test_does_nothing_when_dry_running(tmpdir, goot):
+    conf = {
+        'symlinks': {
+            'b.txt': 'a.txt',
+            'dir/a.txt': 'a.txt',
+        },
+        'backends': {},
+        'tasks': []
+    }
+
+    d = tmpdir.mkdir("directories")
+    f = d.join("a.txt")
+    f.write("foo")
+    conf_file = create_conf_file(d, conf)
+
+    snapshot = os.listdir(str(d))
+
+    res = goot.run(conf_file, ['-n'])
+    assert res.returncode == 0
+
+    assert snapshot == os.listdir(str(d))

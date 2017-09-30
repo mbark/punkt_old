@@ -1,5 +1,11 @@
 package main
 
+type RunConfig struct {
+	DryRun     bool
+	ConfigFile string
+	Config     Config
+}
+
 type Config struct {
 	ParentDir string
 	Symlinks  map[string]string   `yaml:"symlinks"`

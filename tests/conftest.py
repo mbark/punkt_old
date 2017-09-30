@@ -35,5 +35,8 @@ class Goot:
         print(res)
         assert res.returncode == 0
 
-    def run(self, conf_file):
-        return run(["./goot", str(conf_file)], cwd="..")
+    def run(self, conf_file, flags=None):
+        if not flags:
+            flags = []
+
+        return run(["./goot", str(conf_file)] + flags, cwd="..")

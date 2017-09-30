@@ -12,12 +12,29 @@ import (
 
 var (
 	config_file = kingpin.Arg("config", "Configuration file").Required().String()
+	dry_run     = kingpin.Flag("dryrun", "Just print what would have been done").Short('n').Bool()
 )
 
 func main() {
 	kingpin.Parse()
 
-	filename, err := filepath.Abs(*config_file)
+	config := RunConfig{
+		DryRun:     *dry_run,
+		ConfigFile: *config_file,
+	}
+
+	config.Config = readConfigFile(*config_file)
+	fmt.Printf("%s\n", config)
+
+	var hadError bool = createSymlinks(config)
+
+	if hadError {
+		os.Exit(1)
+	}
+}
+
+func readConfigFile(file string) Config {
+	filename, err := filepath.Abs(file)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -38,28 +55,37 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%s\n", config)
 
+	return config
+}
+
+func createSymlinks(config RunConfig) bool {
 	hadError := false
 
-	for to, from := range config.Symlinks {
-		from = filepath.Join(config.ParentDir, from)
-		to = filepath.Join(config.ParentDir, to)
-		createIntermittentDirectories(to)
+	for to, from := range config.Config.Symlinks {
+		from = filepath.Join(config.Config.ParentDir, from)
+		to = filepath.Join(config.Config.ParentDir, to)
 		fmt.Printf("ln -s %s %s\n", from, to)
-		err = os.Symlink(from, to)
-		if err != nil {
-			fmt.Printf("Unable to create symlink %v\n", err)
-			hadError = true
+
+		if !config.DryRun {
+			err := createNecessaryDirectories(to)
+			if err != nil {
+				fmt.Printf("Unable to create necessary directories %s\n", err)
+				hadError = true
+			}
+
+			err = os.Symlink(from, to)
+			if err != nil {
+				fmt.Printf("Unable to create symlink %v\n", err)
+				hadError = true
+			}
 		}
 	}
 
-	if hadError {
-		os.Exit(1)
-	}
+	return hadError
 }
 
-func createIntermittentDirectories(file string) {
+func createNecessaryDirectories(file string) error {
 	dir := filepath.Dir(file)
-	os.MkdirAll(dir, os.ModePerm)
+	return os.MkdirAll(dir, os.ModePerm)
 }
