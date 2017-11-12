@@ -18,11 +18,12 @@ COPY Gopkg.lock Gopkg.toml ./
 RUN dep ensure -vendor-only
 
 COPY tests/Pipfile tests/Pipfile.lock ./tests/
-RUN cd tests && pipenv install
+RUN cd tests && pipenv install --three
 
-COPY . .
+COPY *.go ./
 RUN go build
 
+COPY tests/ ./tests
 WORKDIR ./tests
 
 CMD ["pipenv", "run", "pytest", ".", "--", "--docker"]

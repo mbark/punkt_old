@@ -1,24 +1,64 @@
-from subprocess import run
+from subprocess import PIPE, run
 
+import common
 import pytest
 import yaml
 
 
-@pytest.mark.xfail
-@pytest.mark.docker
-def test_install_from_package_manager(config_file):
-    conf = {'symlinks': {}, 'backends': {'rustup': 'rustup.yaml'}, 'tasks': {}}
+def test_parses_valid_backend_file(tmpdir, goot):
+    d = tmpdir.mkdir("parses")
 
-    rustup_conf = {
-        'bootstrap': 'curl https://sh.rustup.rs -sSf | sh',
-        'list': "rustup show | tail -n 2 | awk '{print $1}'",
-        'update': 'rustup update',
-        'install': 'rustup install'
+    conf = {
+        'symlinks': {},
+        'backends': {
+            'apt': 'backend/apt.yaml'
+        },
+        'tasks': []
     }
-    (d, conf_file) = config_file(conf)
+    conf_file = common.create_conf_file(d, conf)
 
-    rustup_file = d.join("rustup.yaml")
-    rustup_file.write(yaml.dump(rustup_conf))
-
-    res = run(["cargo", "run", "--", str(conf_file)])
+    apt_conf = {
+        'list': "apt list --installed | cut -d/ -f1",
+        'update': 'apt upgrade',
+        'install': 'apt install'
+    }
+    common.create_conf_file(d.mkdir('backend'), apt_conf, 'apt')
+    res = goot.run(conf_file)
     assert res.returncode == 0
+
+
+@pytest.mark.docker
+def test_creates_database_file(tmpdir, goot):
+    d = tmpdir.mkdir("bootstrap")
+
+    conf = {
+        'symlinks': {},
+        'backends': {
+            'apt': 'backend/rustp.yaml'
+        },
+        'tasks': [],
+        'package_files': 'packages'
+    }
+    conf_file = common.create_conf_file(d, conf)
+
+    apt_cmd = 'apt list --installed | cut -d/ -f1'
+    apt_conf = {
+        'list': apt_cmd,
+        'update': 'apt upgrade',
+        'install': 'apt install'
+    }
+    common.create_conf_file(d.mkdir('backend'), apt_conf, 'apt')
+
+    res = run(apt_cmd, stdout=PIPE, shell=True)
+    assert res.returncode is 0
+
+    res = goot.run(conf_file, ['--verify'])
+    assert res.returncode is 0
+
+    assert d.join('packages').check()
+    assert d.join('packages').join('apt.yaml').check()
+
+    contents = yaml.load(d.join('packages').join('apt.yaml').read())
+
+    packages = res.stdout.decode('utf-8').splitlines()
+    assert packages.sort() == contents.sort()
