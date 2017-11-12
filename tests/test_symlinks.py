@@ -21,7 +21,8 @@ def test_simple(tmpdir, goot):
             'c.txt': 'a.txt'
         },
         'backends': {},
-        'tasks': []
+        'tasks': [],
+        'package_files': 'packages'
     }
 
     d = tmpdir.mkdir("simple")
@@ -38,7 +39,8 @@ def test_creates_necessary_directories(tmpdir, goot):
             'a/n/o/ther/dir/e/cto/c.txt': 'a.txt',
         },
         'backends': {},
-        'tasks': []
+        'tasks': [],
+        'package_files': 'packages'
     }
 
     d = tmpdir.mkdir("directories")
@@ -54,7 +56,8 @@ def test_fails_if_file_already_exists(tmpdir, goot):
             'b.txt': 'a.txt'
         },
         'backends': {},
-        'tasks': []
+        'tasks': [],
+        'package_files': 'packages'
     }
 
     d = tmpdir.mkdir("non_existant")
@@ -73,7 +76,8 @@ def test_does_nothing_when_dry_running(tmpdir, goot):
             'dir/a.txt': 'a.txt',
         },
         'backends': {},
-        'tasks': []
+        'tasks': [],
+        'package_files': 'packages'
     }
 
     d = tmpdir.mkdir("directories")
