@@ -20,12 +20,12 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture(scope='session')
-def goot():
-    g = Goot()
-    return g
+def punkt():
+    p = Punkt()
+    return p
 
 
-class Goot:
+class Punkt:
     def __init__(self):
         self.build()
 
@@ -36,4 +36,4 @@ class Goot:
         if not flags:
             flags = []
 
-        return run(['./goot', str(conf_file)] + flags, cwd='..')
+        return run(['./punkt', '--config', str(conf_file)] + flags, cwd='..')

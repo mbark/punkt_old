@@ -1,0 +1,14 @@
+backends:
+  brew: 'brew.yaml'
+
+package_files: 'packages'
+
+symlinks:
+  'b.txt': 'a.txt'
+  'dir/b.txt': 'a.txt'
+  'b.txt': 'non.txt'
+
+tasks:
+  # This will install brew and all packages
+  - goot: brew
+  - shell: echo 'all done'

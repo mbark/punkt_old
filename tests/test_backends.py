@@ -5,7 +5,7 @@ import os
 script_path = os.path.dirname(os.path.realpath(__file__))
 
 
-def test_parses_valid_backend_file(tmpdir, goot):
+def test_parses_valid_backend_file(tmpdir, punkt):
     d = tmpdir.mkdir("parses")
 
     conf = {
@@ -24,11 +24,11 @@ def test_parses_valid_backend_file(tmpdir, goot):
         'install': 'apt install'
     }
     common.create_conf_file(d.mkdir('backend'), apt_conf, 'apt')
-    res = goot.run(conf_file)
+    res = punkt.run(conf_file, ['ensure'])
     assert res.returncode == 0
 
 
-def test_creates_database_file(tmpdir, goot):
+def test_creates_database_file(tmpdir, punkt):
     d = tmpdir.mkdir("bootstrap")
 
     conf = {
@@ -50,7 +50,7 @@ def test_creates_database_file(tmpdir, goot):
     }
     common.create_conf_file(d.mkdir('backend'), backend_conf, 'fake')
 
-    res = goot.run(conf_file)
+    res = punkt.run(conf_file, ['ensure'])
     assert res.returncode is 0
 
     assert d.join('packages').check()

@@ -4,17 +4,17 @@ from os.path import islink
 import common
 
 
-def run_valid(d, conf, goot):
+def run_valid(d, conf, punkt):
     conf_file = common.create_conf_file(d, conf)
 
-    res = goot.run(conf_file)
+    res = punkt.run(conf_file, ['ensure'])
     assert res.returncode == 0
 
     for key in conf['symlinks']:
         assert islink(str(d.join(key)))
 
 
-def test_simple(tmpdir, goot):
+def test_simple(tmpdir, punkt):
     conf = {
         'symlinks': {
             'b.txt': 'a.txt',
@@ -28,10 +28,10 @@ def test_simple(tmpdir, goot):
     d = tmpdir.mkdir("simple")
     f = d.join("a.txt")
     f.write("foo")
-    run_valid(d, conf, goot)
+    run_valid(d, conf, punkt)
 
 
-def test_creates_necessary_directories(tmpdir, goot):
+def test_creates_necessary_directories(tmpdir, punkt):
     conf = {
         'symlinks': {
             'dir/a.txt': 'a.txt',
@@ -47,10 +47,10 @@ def test_creates_necessary_directories(tmpdir, goot):
     f = d.join("a.txt")
     f.write("foo")
 
-    run_valid(d, conf, goot)
+    run_valid(d, conf, punkt)
 
 
-def test_fails_if_file_already_exists(tmpdir, goot):
+def test_fails_if_file_already_exists(tmpdir, punkt):
     conf = {
         'symlinks': {
             'b.txt': 'a.txt'
@@ -65,11 +65,11 @@ def test_fails_if_file_already_exists(tmpdir, goot):
     f.write("foo")
 
     conf_file = common.create_conf_file(d, conf)
-    res = goot.run(conf_file)
+    res = punkt.run(conf_file, ['ensure'])
     assert res.returncode != 0
 
 
-def test_does_nothing_when_dry_running(tmpdir, goot):
+def test_does_nothing_when_dry_running(tmpdir, punkt):
     conf = {
         'symlinks': {
             'b.txt': 'a.txt',
@@ -87,7 +87,7 @@ def test_does_nothing_when_dry_running(tmpdir, goot):
 
     snapshot = os.listdir(str(d))
 
-    res = goot.run(conf_file, ['-n'])
+    res = punkt.run(conf_file, ['-n'])
     assert res.returncode == 0
 
     assert snapshot == os.listdir(str(d))
