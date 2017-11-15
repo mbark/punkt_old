@@ -1,5 +1,5 @@
 import pytest
-from subprocess import run
+from subprocess import run, PIPE
 
 
 def pytest_addoption(parser):
@@ -30,10 +30,15 @@ class Punkt:
         self.build()
 
     def build(self):
-        return run(['go', 'build'], cwd='..')
+        run(['go', 'build'], cwd='..')
 
-    def run(self, conf_file, flags=None):
-        if not flags:
-            flags = []
+    def run(self, config=None, flags=None):
+        punkt_flags = []
 
-        return run(['./punkt', '--config', str(conf_file)] + flags, cwd='..')
+        if flags:
+            punkt_flags = flags
+
+        if config:
+            punkt_flags += ['--config-file', str(config)]
+
+        return run(['./punkt'] + punkt_flags, cwd='..', stdout=PIPE)

@@ -1,3 +1,0 @@
-list: 'brew list'
-upgrade: 'brew upgrade'
-install: 'brew install'

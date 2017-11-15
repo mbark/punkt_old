@@ -11,44 +11,39 @@ def test_parses_valid_backend_file(tmpdir, punkt):
     conf = {
         'symlinks': {},
         'backends': {
-            'apt': 'backend/apt.yaml'
+            'apt': {
+                'list': "apt list --installed | cut -d/ -f1",
+                'update': 'apt upgrade',
+                'install': 'apt install'
+            }
         },
         'tasks': [],
-        'package_files': 'packages'
+        'pkgdbs': 'packages'
     }
     conf_file = common.create_conf_file(d, conf)
 
-    apt_conf = {
-        'list': "apt list --installed | cut -d/ -f1",
-        'update': 'apt upgrade',
-        'install': 'apt install'
-    }
-    common.create_conf_file(d.mkdir('backend'), apt_conf, 'apt')
-    res = punkt.run(conf_file, ['ensure'])
+    res = punkt.run(conf_file)
     assert res.returncode == 0
 
 
 def test_creates_database_file(tmpdir, punkt):
     d = tmpdir.mkdir("bootstrap")
+    cmd = '%s/fake_backend.sh' % script_path
 
     conf = {
         'symlinks': {},
         'backends': {
-            'fake': 'backend/fake.yaml'
+            'fake': {
+                'list': '%s list' % cmd,
+                'update': '%s upgrade' % cmd,
+                'install': '%s install' % cmd
+            },
         },
         'tasks': [],
-        'package_files': 'packages'
+        'pkgdbs': 'packages'
     }
+
     conf_file = common.create_conf_file(d, conf)
-
-    cmd = '%s/fake_backend.sh' % script_path
-
-    backend_conf = {
-        'list': '%s list' % cmd,
-        'update': '%s upgrade' % cmd,
-        'install': '%s install' % cmd
-    }
-    common.create_conf_file(d.mkdir('backend'), backend_conf, 'fake')
 
     res = punkt.run(conf_file, ['ensure'])
     assert res.returncode is 0

@@ -1,14 +1,17 @@
 backends:
-  brew: 'brew.yaml'
+  brew:
+    list: 'brew list'
+    upgrade: 'brew upgrade'
+    install: 'brew install'
 
-package_files: 'packages'
+pkgdbs: 'packages'
 
 symlinks:
-  'b.txt': 'a.txt'
-  'dir/b.txt': 'a.txt'
-  'b.txt': 'non.txt'
+  - to: 'b.txt'
+    from: 'a.txt'
+  - to: 'dir/b.txt'
+    from: 'a.txt'
 
 tasks:
   # This will install brew and all packages
-  - goot: brew
-  - shell: echo 'all done'
+  - punkt: brew

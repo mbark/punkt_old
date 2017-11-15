@@ -4,11 +4,22 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/mbark/punkt/backend"
+	"github.com/mbark/punkt/opt"
+	"github.com/mbark/punkt/symlink"
+
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/kyokomi/emoji.v1"
+	"path/filepath"
+)
+
+var (
+	configFile string
+	logLevel   string
+	dryRun     bool
 )
 
 var shortMessage = emoji.Sprint(":package: punkt; a dotfile manager to be dotty about")
@@ -17,26 +28,21 @@ environment actually looks. It can handle everything from simple
 dotfile repos that just create a few symlinks, to those that
 want to ensure all installed packages are kept up date.`)
 
-// Opts contains the global run configuration options
-var Opts = RunConfig{}
-
-// RunConfig contains the configuration for running, primarily set by the
-// command line arguments
-type RunConfig struct {
-	DryRun     bool
-	LogLevel   string
-	ConfigFile string
-	ConfigDir  string
-}
-
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	Use:   "punkt",
 	Short: shortMessage,
 	Long:  longMessage,
-	Run: func(cmd *cobra.Command, args []string) {
-		setLogLevel(Opts.LogLevel)
-	},
+}
+
+var userConfig = UserConfig{}
+
+// UserConfig is the parsed content of the user's configuration yaml file
+type UserConfig struct {
+	Symlinks []symlink.Symlink          `yaml:"symlinks"`
+	Backends map[string]backend.Backend `yaml:"backends"`
+	Tasks    []map[string]string        `yaml:"tasks"`
+	PkgDbs   string                     `yaml:"pkgdbs"`
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -49,40 +55,46 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(Opts.initConfig)
-	RootCmd.PersistentFlags().StringVar(&Opts.ConfigFile, "config", "c", `Config file (default is $HOME/.punkt.yaml)`)
-	RootCmd.PersistentFlags().StringVarP(&Opts.LogLevel, "log-level", "l", "info", `Set the logging level ("debug"|"info"|"warn"|"error"|"fatal")`)
-	RootCmd.PersistentFlags().BoolVarP(&Opts.DryRun, "dry-run", "n", false, `Run through and print only`)
+	cobra.OnInitialize(initConfig)
+	RootCmd.PersistentFlags().StringVar(&configFile, "config-file", "c", `Config file (default is $HOME/.punkt.yaml)`)
+	RootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "info", `Set the logging level ("debug"|"info"|"warn"|"error"|"fatal")`)
+	RootCmd.PersistentFlags().BoolVarP(&dryRun, "dry-run", "n", false, `Run through and print only`)
 }
 
 // initConfig reads in config file and ENV variables if set.
-func (Opts *RunConfig) initConfig() {
-	if Opts.ConfigFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(Opts.LogLevel)
+func initConfig() {
+	if configFile != "" {
+		viper.SetConfigFile(configFile)
 	} else {
-		// Find home directory.
 		home, err := homedir.Dir()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-
-		// Search config in home directory with name ".punkt" (without extension).
 		viper.AddConfigPath(home)
 		viper.SetConfigName(".punkt")
 	}
 
-	viper.AutomaticEnv() // read in environment variables that match
+	viper.AutomaticEnv()
 
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	if err := viper.ReadInConfig(); err != nil {
+		logrus.WithError(err).Fatal("Unable to find config file")
 	}
+
+	workingDir := filepath.Dir(viper.ConfigFileUsed())
+	if err := os.Chdir(workingDir); err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"workingdir": workingDir,
+			"configFile": viper.ConfigFileUsed(),
+		}).Fatal("Unable to change working directory to that of the config file")
+	}
+
+	setLogLevel()
+	setUserConfig()
+	opt.DryRun = dryRun
 }
 
-// setLogLevel sets the logrus logging level
-func setLogLevel(logLevel string) {
+func setLogLevel() {
 	if logLevel != "" {
 		lvl, err := logrus.ParseLevel(logLevel)
 		if err != nil {
@@ -93,4 +105,19 @@ func setLogLevel(logLevel string) {
 	} else {
 		logrus.SetLevel(logrus.InfoLevel)
 	}
+}
+
+// ReadUserConfig marshals the given config file to json
+func setUserConfig() {
+	err := viper.Unmarshal(&userConfig)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"file": viper.ConfigFileUsed(),
+		}).WithError(err).Fatal("Unable to parse config file")
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"from":   viper.ConfigFileUsed(),
+		"config": userConfig,
+	}).Debug("Successfully parsed config")
 }
