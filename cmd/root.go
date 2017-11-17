@@ -8,6 +8,7 @@ import (
 	"github.com/mbark/punkt/opt"
 	"github.com/mbark/punkt/symlink"
 
+	"github.com/fatih/color"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -22,11 +23,13 @@ var (
 	dryRun     bool
 )
 
+var magenta = color.New(color.FgMagenta).SprintFunc()
+
 var shortMessage = emoji.Sprint(":package: punkt; a dotfile manager to be dotty about")
-var longMessage = emoji.Sprint(`:package: punkt manages your dotfiles and ensures that they match how your
+var longMessage = emoji.Sprintf(`:package: %s manages your dotfiles and ensures that they match how your
 environment actually looks. It can handle everything from simple
 dotfile repos that just create a few symlinks, to those that
-want to ensure all installed packages are kept up date.`)
+want to ensure all installed packages are kept up date.`, magenta("punkt"))
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
