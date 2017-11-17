@@ -1,4 +1,4 @@
 package opt
 
 // DryRun ...
-var DryRun bool = false
+var DryRun = false

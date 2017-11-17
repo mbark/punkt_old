@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/mbark/punkt.svg?branch=master)](https://travis-ci.org/mbark/punkt)
+
 # goot
 A tool to manage your dotfiles and your environment.
 
@@ -32,7 +34,8 @@ A list of features that I want included and their status.
   - [ ] Store configuration for the app in a file
   - [ ] Allow settings a package as ignored and undoing the operation
 - [ ] devops
-  - [ ] Set up a test suite via `pytest`
+  - [x] Set up a test suite via `pytest`
+  - [x] Run tests automatically via travis
   - [ ] Provide a way of running the test suite under different conditions via `Docker`
   - [ ] Use git hooks to ensure that all tests pass
   - [ ] Write unit tests for the code where applicable
