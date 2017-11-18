@@ -3,7 +3,7 @@ FROM golang:1.9.0
 ENV LC_ALL=C.UTF-8 \
     LANG=C.UTF-8 \
     PIPENV_VENV_IN_PROJECT=1 \
-    PROJECT=github.com/mbark/goot
+    PROJECT=github.com/mbark/punkt
 
 RUN apt-get update && \
     apt-get -y install python3-pip && \
@@ -20,10 +20,10 @@ RUN dep ensure -vendor-only
 COPY tests/Pipfile tests/Pipfile.lock ./tests/
 RUN cd tests && pipenv install --three
 
-COPY *.go ./
-RUN go build
+COPY . /go/src/$PROJECT
+RUN go build main.go
 
 COPY tests/ ./tests
 WORKDIR ./tests
 
-CMD ["pipenv", "run", "pytest", ".", "--", "--docker"]
+CMD ["pipenv", "run", "pytest", "--", "--docker"]

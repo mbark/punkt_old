@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/mbark/punkt.svg?branch=master)](https://travis-ci.org/mbark/punkt)
 
-# goot
+# punkt
 A tool to manage your dotfiles and your environment.
 
 Project goals:
