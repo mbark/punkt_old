@@ -1,0 +1,24 @@
+---
+- hosts: all
+  connection: local
+
+  vars_files:
+    - default.config.yml
+
+  pre_tasks:
+    - include_vars: "{{ item }}"
+      with_fileglob:
+        - ../config.yml
+      tags: ['always']
+
+  roles:
+    - role: geerlingguy.homebrew
+      tags: ['homebrew']
+
+  tasks:
+    - include: tasks/ansible-setup.yml
+    - name: Run configured post-provision ansible task files.
+      include: "{{ outer_item }}"
+      loop_control:
+        loop_var: outer_item
+      with_fileglob: "{{ post_provision_tasks|default(omit) }}"

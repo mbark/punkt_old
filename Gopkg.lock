@@ -14,6 +14,18 @@
   version = "v1.4.2"
 
 [[projects]]
+  name = "github.com/gobuffalo/envy"
+  packages = ["."]
+  revision = "e613c80275b86293880eddeb27417c9a7c670ff3"
+  version = "v1.3.0"
+
+[[projects]]
+  name = "github.com/gobuffalo/packr"
+  packages = ["."]
+  revision = "c08adc8d73d7998700fd7e1940bc728ef68f2f33"
+  version = "v1.9.1"
+
+[[projects]]
   branch = "master"
   name = "github.com/hashicorp/hcl"
   packages = [".","hcl/ast","hcl/parser","hcl/scanner","hcl/strconv","hcl/token","json/parser","json/scanner","json/token"]
@@ -24,6 +36,12 @@
   packages = ["."]
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
   version = "v1.0"
+
+[[projects]]
+  name = "github.com/joho/godotenv"
+  packages = ["."]
+  revision = "a79fa1e548e2c689c241d10173efd51e5d689d5b"
+  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/magiconair/properties"
@@ -60,6 +78,12 @@
   packages = ["."]
   revision = "16398bac157da96aa88f98a2df640c7f32af1da2"
   version = "v1.0.1"
+
+[[projects]]
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
 
 [[projects]]
   name = "github.com/sirupsen/logrus"
@@ -136,6 +160,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "35d8676f46d8811ef6b270c594661a1291b9b85529b91c4e6f6a3eab575741bb"
+  inputs-digest = "b396af3d2a2bebb4fd9d96fa541e0f027ec50761da82f30a93159dd98efa3d56"
   solver-name = "gps-cdcl"
   solver-version = 1
