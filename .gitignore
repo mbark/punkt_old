@@ -22,3 +22,6 @@ vendor/
 # End of https://www.gitignore.io/api/go
 
 /punkt
+
+# This is currently the place where the playbook is dumped
+/example

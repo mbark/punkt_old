@@ -1,0 +1,11 @@
+---
+punkt_backends:
+  - homebrew
+
+homebrew_installed_packages: []
+homebrew_cask_apps: []
+homebrew_taps:
+  - homebrew/bundle
+homebrew_use_brewfile: true
+homebrew_brewfile_dir: '~/.config/punkt'
+homebrew_upgrade_all_packages: no

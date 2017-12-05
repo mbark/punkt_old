@@ -1,15 +1,15 @@
 package cmd
 
 import (
-	"os"
+	"os/user"
 
-	"github.com/mbark/punkt/backend"
+	"github.com/mbark/punkt/exec"
+	"github.com/mbark/punkt/path"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-// ensureCmd represents the ensure command
 var ensureCmd = &cobra.Command{
 	Use:   "ensure",
 	Short: "Ensure your dotfiles are up to date",
@@ -25,19 +25,12 @@ func init() {
 }
 
 func ensure() {
-	hadError := false
-	for _, symlink := range userConfig.Symlinks {
-		hadError = !symlink.Create() || hadError
+	path.GoToPunktHome()
+
+	usr, err := user.Current()
+	if err != nil {
+		logrus.WithError(err).Fatal("Unable to get current user")
 	}
 
-	backend.CreatePackageDirectory(userConfig.PkgDbs)
-	for name, backend := range userConfig.Backends {
-		hadError = !backend.WriteInstalledPackages(name, userConfig.PkgDbs) || hadError
-	}
-
-	logrus.WithField("hadError", hadError).Info("All done")
-
-	if hadError {
-		os.Exit(1)
-	}
+	exec.Run("ansible-playbook", "main.yml", "-i", "inventory", "--tags", "homebrew", "--become-user="+usr.Username)
 }
