@@ -14,31 +14,31 @@ Project goals:
 ## Current status and roadmap
 A list of features that I want included and their status. 
 
-- [ ] Create a base structure for the ansible config
-- [ ] Config
-  - [ ] Read a configuration file and use options as overrides
+- [x] Create a base structure for the ansible config
 - [ ] Package managers
   - [ ] Add general support to add a package manager
-    - [ ] `dump` environment to be installed
-    - [ ] `ensure` environment is up to date with the given dump
+    - [x] `dump` environment to be installed
+    - [x] `ensure` environment is up to date with the given dump
     - [ ] `update` to latest version of packages for each manager
   - [ ] Support `homebrew` via `bundle` and `geerlingguy.homebrew`
-    - [ ] Generate a brewfile when doing a `dump`
-    - [ ] Run `geerlingguy.homebrew` (and manage sudo)
+    - [x] Generate a brewfile when doing a `dump`
+    - [x] Run `geerlingguy.homebrew`
+    - [ ] Support `update`
   - [ ] Support `apt-get`
 - [ ] Symlinks
-  - [ ] Create structure for symlinks
-  - [ ] Search `~` and `~/.config` with a given depth for symlinks and allow the user to add these
-  - [ ] Make it possible to directories and depth when searching for symlinks
+  - [x] Create structure for symlinks
+  - [x] Search `~` with a given depth for symlinks and store these
+  - [ ] Configure which symlinks of the found ones to add
+  - [ ] Configure directories and depth when searching for symlinks
   - [ ] Support `add`ing symlinks that are outside of the searched directories
 - [ ] Tasks
   - [ ] Allow the user to configure their own tasks to be run
 - [ ] devops
-  - [ ] Set up a test suite via `pytest`
-  - [ ] Run tests automatically via `travis`
+  - [ ] Set up a test suite to check that it all works properly
+    - [ ] Find a way to manage the sudo-problem
+  - [x] Run tests automatically via `travis`
   - [ ] Use `git hooks` to ensure that all tests pass
   - [ ] Write unit tests for the code where applicable
-  - [ ] Provide a way of testing all supported package managers 
 - [ ] Config
   - [ ] Store configuration for the app in a file
 - [ ] UX/Beauty

@@ -1,7 +1,4 @@
 ---
-punkt_backends:
-  - homebrew
-
 homebrew_installed_packages: []
 homebrew_cask_apps: []
 homebrew_taps:

@@ -15,7 +15,7 @@ var initCmd = &cobra.Command{
 to make punkt work. Will also run ansible-galaxy to install dependencies for
 punkt's ansible setup.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		initialize()
+		Initialize()
 	},
 }
 
@@ -23,8 +23,13 @@ func init() {
 	RootCmd.AddCommand(initCmd)
 }
 
-func initialize() {
+// Initialize the necessary directory structure for a punkt by placing the
+// basic ansible configuration places at the config directory.
+func Initialize() {
+	db.Clean()
+
 	path.GoToPunktHome()
+
 	db.CreateStructure()
 	exec.Run("ansible-galaxy", "install", "-r", "requirements.yml")
 	exec.Run("ansible-playbook", "main.yml", "-i", "inventory", "-K")

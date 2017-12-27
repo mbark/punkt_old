@@ -3,6 +3,7 @@ package cmd
 import (
 	"strings"
 
+	"github.com/mbark/punkt/file"
 	"github.com/mbark/punkt/mgr/homebrew"
 	"github.com/mbark/punkt/path"
 
@@ -31,4 +32,5 @@ func init() {
 func dump() {
 	path.GoToPunktHome()
 	homebrew.Dump()
+	file.Dump()
 }

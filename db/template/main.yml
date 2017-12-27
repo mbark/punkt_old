@@ -3,22 +3,19 @@
   connection: local
 
   vars_files:
-    - default.config.yml
-
-  pre_tasks:
-    - include_vars: "{{ item }}"
-      with_fileglob:
-        - ../config.yml
-      tags: ['always']
+    - vars/homebrew.yml
+    - vars/symlinks.yml
 
   roles:
     - role: geerlingguy.homebrew
       tags: ['homebrew']
+    - role: symlink
+      tags: ['symlink']
 
   tasks:
-    - include: tasks/ansible-setup.yml
+    - include_tasks: tasks/ansible-setup.yml
     - name: Run configured post-provision ansible task files.
-      include: "{{ outer_item }}"
+      include_tasks: "{{ outer_item }}"
       loop_control:
         loop_var: outer_item
       with_fileglob: "{{ post_provision_tasks|default(omit) }}"

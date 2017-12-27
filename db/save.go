@@ -11,19 +11,26 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// Clean out the old configuration files
+func Clean() {
+	punktHome := path.GetPunktHome()
+	os.RemoveAll(punktHome)
+	os.MkdirAll("/tmp/", os.ModeDir)
+}
+
 // CreateStructure ...
 func CreateStructure() {
 	base := packr.NewBox("./template")
 	err := base.Walk(copyAll)
 	if err != nil {
-		logrus.WithError(err).Error("Unable to unpack ansible directories")
+		logrus.WithError(err).Fatal("Unable to unpack ansible directories")
 	}
 }
 
 func copyAll(src string, file packr.File) error {
 	logrus.WithFields(logrus.Fields{
 		"path": src,
-	}).Info("Copying file")
+	}).Debug("Copying file")
 
 	dest := "./" + src
 	err := path.CreateNecessaryDirectories(dest)
@@ -41,66 +48,49 @@ func copyAll(src string, file packr.File) error {
 		return err
 	}
 
-	err = newFile.Sync()
+	return newFile.Sync()
+}
+
+// SaveStruct ...
+func SaveStruct(path string, content interface{}) bool {
+	out, err := yaml.Marshal(&content)
 	if err != nil {
-		return err
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"role": path,
+		}).WithError(err).Error("Unable to marshal db to yaml")
+		return false
 	}
 
-	return nil
-}
-
-// SaveStruct saves the given interface as yaml in the correct place
-func SaveStruct(role string, content interface{}) bool {
-	s := saverFromStruct(role, content)
-	return s.Save()
-}
-
-// SaveYaml saves the given yaml for a role to the correct place
-func SaveYaml(role string, content []byte) bool {
-	s := newSaver(role, content)
+	s := newSaver(path, out)
 	return s.Save()
 }
 
 type saver struct {
-	role    string
-	file    string
+	path    string
 	content []byte
 	logger  *logrus.Entry
 }
 
-func saverFromStruct(role string, content interface{}) *saver {
-	out, err := yaml.Marshal(&content)
-	if err != nil {
-		logrus.WithField("role", role).WithError(err).Error("Unable to marshal db to yaml")
-		return nil
-	}
-
-	return newSaver(role, out)
-}
-
-func newSaver(role string, content []byte) *saver {
-	file := "roles/" + role + "/tasks/main.yml"
+func newSaver(path string, content []byte) *saver {
 	logger := logrus.WithFields(logrus.Fields{
-		"role": role,
-		"file": file,
+		"path": path,
 	})
 
 	return &saver{
-		role:    role,
-		file:    file,
+		path:    path,
 		content: content,
 		logger:  logger,
 	}
 }
 
 func (s saver) Save() bool {
-	err := path.CreateNecessaryDirectories(s.file)
+	err := path.CreateNecessaryDirectories(s.path)
 	if err != nil {
 		s.logger.WithError(err).Error("Unable to create necessary directories")
 		return false
 	}
 
-	f, err := os.Create(s.file)
+	f, err := os.Create(s.path)
 	if err != nil {
 		s.logger.WithError(err).Error("Unable to create file")
 		return false
