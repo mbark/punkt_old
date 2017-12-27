@@ -10,21 +10,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var ensureCmd = &cobra.Command{
-	Use:   "ensure",
-	Short: "Ensure your dotfiles are up to date",
-	Long: `Ensure that your dotfiles are up to date with your
-current environment.`,
+var updateCmd = &cobra.Command{
+	Use:   "update",
+	Short: "update all packages",
+	Long:  `update all package versions`,
 	Run: func(cmd *cobra.Command, args []string) {
-		ensure()
+		Update()
 	},
 }
 
 func init() {
-	RootCmd.AddCommand(ensureCmd)
+	RootCmd.AddCommand(updateCmd)
 }
 
-func ensure() {
+// Update ...
+func Update() {
 	path.GoToPunktHome()
 
 	usr, err := user.Current()
@@ -32,5 +32,5 @@ func ensure() {
 		logrus.WithError(err).Fatal("Unable to get current user")
 	}
 
-	exec.Run("ansible-playbook", "main.yml", "-i", "inventory", "--become-user="+usr.Username)
+	exec.Run("ansible-playbook", "main.yml", "-i", "inventory", "--become-user="+usr.Username, "-e", "punkt_upgrade=true")
 }

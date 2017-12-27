@@ -3,6 +3,7 @@
   connection: local
 
   vars_files:
+    - vars/punkt.yml
     - vars/homebrew.yml
     - vars/symlinks.yml
 

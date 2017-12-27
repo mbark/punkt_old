@@ -19,11 +19,11 @@ A list of features that I want included and their status.
   - [ ] Add general support to add a package manager
     - [x] `dump` environment to be installed
     - [x] `ensure` environment is up to date with the given dump
-    - [ ] `update` to latest version of packages for each manager
-  - [ ] Support `homebrew` via `bundle` and `geerlingguy.homebrew`
+    - [x] `update` to latest version of packages for each manager
+  - [x] Support `homebrew` via `bundle` and `geerlingguy.homebrew`
     - [x] Generate a brewfile when doing a `dump`
     - [x] Run `geerlingguy.homebrew`
-    - [ ] Support `update`
+    - [x] Support `update`
   - [ ] Support `apt-get`
 - [ ] Symlinks
   - [x] Create structure for symlinks
