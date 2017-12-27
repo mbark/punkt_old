@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/mbark/punkt.svg?branch=master)](https://travis-ci.org/mbark/punkt) [![Go Report Card](https://goreportcard.com/badge/gojp/goreportcard)](https://goreportcard.com/report/gojp/goreportcard)
+[![Build Status](https://travis-ci.org/mbark/punkt.svg?branch=master)](https://travis-ci.org/mbark/punkt) [![Go Report Card](https://goreportcard.com/badge/mbark/punkt)](https://goreportcard.com/report/mbark/punkt)
 
 # punkt
 A tool to manage your dotfiles and your environment.
@@ -24,7 +24,11 @@ A list of features that I want included and their status.
     - [x] Generate a brewfile when doing a `dump`
     - [x] Run `geerlingguy.homebrew`
     - [x] Support `update`
-  - [ ] Support `apt-get`
+  - [ ] Let the user pick which package managers to use
+  - [ ] Support:
+    - [ ] `apt-get`
+    - [ ] `yarn`
+  - [ ] Allow writing your own custom backends via ansible
 - [ ] Symlinks
   - [x] Create structure for symlinks
   - [x] Search `~` with a given depth for symlinks and store these

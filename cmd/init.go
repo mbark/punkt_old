@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/mbark/punkt/db"
 	"github.com/mbark/punkt/exec"
 	"github.com/mbark/punkt/path"
@@ -26,11 +28,11 @@ func init() {
 // Initialize the necessary directory structure for a punkt by placing the
 // basic ansible configuration places at the config directory.
 func Initialize() {
-	db.Clean()
-
 	path.GoToPunktHome()
 
 	db.CreateStructure()
+
+	os.Chdir("ansible")
 	exec.Run("ansible-galaxy", "install", "-r", "requirements.yml")
 	exec.Run("ansible-playbook", "main.yml", "-i", "inventory", "-K")
 }

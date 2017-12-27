@@ -11,17 +11,15 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Clean out the old configuration files
-func Clean() {
-	punktHome := path.GetPunktHome()
-	os.RemoveAll(punktHome)
-	os.MkdirAll("/tmp/", os.ModeDir)
-}
-
 // CreateStructure ...
 func CreateStructure() {
+	err := os.MkdirAll("./usr", os.ModePerm)
+	if err != nil {
+		logrus.WithError(err).Fatal("Unable to create directory to store usr configuration")
+	}
+
 	base := packr.NewBox("./template")
-	err := base.Walk(copyAll)
+	err = base.Walk(copyAll)
 	if err != nil {
 		logrus.WithError(err).Fatal("Unable to unpack ansible directories")
 	}
@@ -32,7 +30,7 @@ func copyAll(src string, file packr.File) error {
 		"path": src,
 	}).Debug("Copying file")
 
-	dest := "./" + src
+	dest := "./ansible/" + src
 	err := path.CreateNecessaryDirectories(dest)
 	if err != nil {
 		return err
@@ -106,6 +104,6 @@ func (s saver) Save() bool {
 
 	f.Sync()
 
-	s.logger.Info("Succesfully wrote to backend database file")
+	s.logger.Info("Successfully wrote to backend database file")
 	return true
 }

@@ -4,5 +4,5 @@ homebrew_cask_apps: []
 homebrew_taps:
   - homebrew/bundle
 homebrew_use_brewfile: true
-homebrew_brewfile_dir: '~/.config/punkt'
+homebrew_brewfile_dir: '~/.config/punkt/usr'
 homebrew_upgrade_all_packages: "{{ punkt_upgrade }}"

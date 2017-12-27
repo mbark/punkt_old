@@ -13,6 +13,13 @@
     - role: symlink
       tags: ['symlink']
 
+  pre_tasks:
+    - name: Include user configuration
+      include_vars:
+        dir: '../usr'
+        extensions: ['yml', 'yaml', 'json']
+        files_matching: '.(yml|yaml|json)'
+
   tasks:
     - include_tasks: tasks/ansible-setup.yml
     - name: Run configured post-provision ansible task files.
