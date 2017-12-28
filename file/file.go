@@ -47,15 +47,26 @@ func (f *finder) find() {
 	var filtered []symlink
 	for _, link := range f.Symlinks {
 		if strings.HasPrefix(link.From, f.home+"/dotfiles") {
-			filtered = append(filtered, link)
+			filtered = append(filtered, symlink{
+				From: f.rewriteHome(link.From),
+				To:   f.rewriteHome(link.To),
+			})
 		}
 	}
 
 	f.Symlinks = filtered
 }
 
+func (f *finder) rewriteHome(path string) string {
+	return strings.Replace(path, f.home, "~", 1)
+}
+
 func (f *finder) walkFunc(currpath string, info os.FileInfo, err error) error {
 	if currpath == f.home {
+		return nil
+	}
+
+	if err != nil {
 		return nil
 	}
 
