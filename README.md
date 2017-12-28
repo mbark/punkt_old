@@ -35,8 +35,8 @@ A list of features that I want included and their status.
   - [ ] Configure which symlinks of the found ones to add
   - [ ] Configure directories and depth when searching for symlinks
   - [ ] Support `add`ing symlinks that are outside of the searched directories
-- [ ] Tasks
-  - [ ] Allow the user to configure their own tasks to be run
+- [x] Tasks
+  - [x] Allow the user to configure their own tasks to be run
 - [ ] devops
   - [ ] Set up a test suite to check that it all works properly
     - [ ] Find a way to manage the sudo-problem

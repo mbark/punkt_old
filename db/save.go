@@ -11,15 +11,22 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+func createDir(dir string) {
+	err := os.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"directory": dir,
+		}).WithError(err).Fatal("Unable to create directory")
+	}
+}
+
 // CreateStructure ...
 func CreateStructure() {
-	err := os.MkdirAll("./usr", os.ModePerm)
-	if err != nil {
-		logrus.WithError(err).Fatal("Unable to create directory to store usr configuration")
-	}
+	createDir("./tasks")
+	createDir("./vars")
 
 	base := packr.NewBox("./template")
-	err = base.Walk(copyAll)
+	err := base.Walk(copyAll)
 	if err != nil {
 		logrus.WithError(err).Fatal("Unable to unpack ansible directories")
 	}

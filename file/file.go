@@ -37,7 +37,7 @@ func Dump() {
 		"depth":    s.depth,
 	}).Debug("Found the following symlinks")
 
-	db.SaveStruct("usr/symlinks.yml", s)
+	db.SaveStruct("vars/symlinks.yml", s)
 
 }
 

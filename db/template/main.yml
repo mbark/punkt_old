@@ -16,14 +16,11 @@
   pre_tasks:
     - name: Include user configuration
       include_vars:
-        dir: '../usr'
+        dir: "{{ punkt_config_home }}/vars"
         extensions: ['yml', 'yaml', 'json']
         files_matching: '.(yml|yaml|json)'
 
   tasks:
     - include_tasks: tasks/ansible-setup.yml
-    - name: Run configured post-provision ansible task files.
-      include_tasks: "{{ outer_item }}"
-      loop_control:
-        loop_var: outer_item
-      with_fileglob: "{{ post_provision_tasks|default(omit) }}"
+    - include_tasks: "{{ item }}"
+      with_fileglob: "{{ punkt_config_home }}/tasks/*.yml"
