@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 )
@@ -16,23 +17,6 @@ func CreateNecessaryDirectories(file string) error {
 	return os.MkdirAll(dir, os.ModePerm)
 }
 
-// GoToPunktHome ...
-func GoToPunktHome() {
-	workingDir := GetPunktHome()
-
-	if err := os.MkdirAll(workingDir, os.ModePerm); err != nil {
-		logrus.WithError(err).WithFields(logrus.Fields{
-			"workingdir": workingDir,
-		}).Fatal("Could not create configuration home for punkt")
-	}
-
-	if err := os.Chdir(workingDir); err != nil {
-		logrus.WithError(err).WithFields(logrus.Fields{
-			"workingdir": workingDir,
-		}).Fatal("Unable to change working directory to that of the config file")
-	}
-}
-
 // GetUserHome returns the user's home directory
 func GetUserHome() string {
 	usr, err := user.Current()
@@ -43,7 +27,15 @@ func GetUserHome() string {
 	return usr.HomeDir
 }
 
-// GetPunktHome returns the directory for the punkt configuration
-func GetPunktHome() string {
-	return filepath.Join(GetUserHome(), ".config", "punkt")
+// ExpandHome takes the given string and replaces occurrences of ~ with the
+// current user's home directory
+func ExpandHome(s string) string {
+	return strings.Replace(s, "~", GetUserHome(), 1)
+}
+
+// UnexpandHome takes the given string and replaces the user's home with ~
+// This is useful when you want to make something home-relative, rather than
+// absolute
+func UnexpandHome(s string) string {
+	return strings.Replace(s, GetUserHome(), "~", 1)
 }

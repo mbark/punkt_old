@@ -3,6 +3,7 @@ package db
 import (
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/mbark/punkt/path"
 
@@ -56,8 +57,9 @@ func copyAll(src string, file packr.File) error {
 	return newFile.Sync()
 }
 
-// SaveStruct ...
-func SaveStruct(path string, content interface{}) bool {
+// SaveVars ...
+func SaveVars(name string, content interface{}, dest string) bool {
+	path := filepath.Join(dest, "vars", name+".yml")
 	out, err := yaml.Marshal(&content)
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{

@@ -4,7 +4,6 @@ import (
 	"os/user"
 
 	"github.com/mbark/punkt/exec"
-	"github.com/mbark/punkt/path"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -25,8 +24,6 @@ func init() {
 
 // Update ...
 func Update() {
-	path.GoToPunktHome()
-
 	usr, err := user.Current()
 	if err != nil {
 		logrus.WithError(err).Fatal("Unable to get current user")

@@ -1,8 +1,0 @@
-- name: Create symlinks
-  file:
-    src: "~/dotfiles/{{ item.from }}"
-    dest: "~/{{ item.to }}"
-    state: link
-  become: no
-  with_fileglob: ../symlink.yaml
-  with_items: "{{ symlinks }}"
