@@ -18,7 +18,7 @@ import (
 var (
 	defaultConfig    = path.ExpandHome("~/.config/punkt/config")
 	defaultPunktHome = path.ExpandHome("~/.config/punkt")
-	defaultDotfiles  = path.ExpandHome("~/dotfiles")
+	defaultDotfiles  = path.ExpandHome("~/.dotfiles")
 	logLevel         string
 	config           string
 	punktHome        string

@@ -1,65 +1,19 @@
-package db
+package file
 
 import (
-	"io"
 	"os"
 	"path/filepath"
 
-	"github.com/mbark/punkt/path"
-
-	"github.com/gobuffalo/packr"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
+
+	"github.com/mbark/punkt/path"
 )
 
-func createDir(dir string) {
-	err := os.MkdirAll(dir, os.ModePerm)
-	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"directory": dir,
-		}).WithError(err).Fatal("Unable to create directory")
-	}
-}
-
-// CreateStructure ...
-func CreateStructure() {
-	createDir("./tasks")
-	createDir("./vars")
-
-	base := packr.NewBox("./template")
-	err := base.Walk(copyAll)
-	if err != nil {
-		logrus.WithError(err).Fatal("Unable to unpack ansible directories")
-	}
-}
-
-func copyAll(src string, file packr.File) error {
-	logrus.WithFields(logrus.Fields{
-		"path": src,
-	}).Debug("Copying file")
-
-	dest := "./ansible/" + src
-	err := path.CreateNecessaryDirectories(dest)
-	if err != nil {
-		return err
-	}
-
-	newFile, err := os.Create(dest)
-	if err != nil {
-		return err
-	}
-
-	_, err = io.Copy(newFile, file)
-	if err != nil {
-		return err
-	}
-
-	return newFile.Sync()
-}
-
-// SaveVars ...
-func SaveVars(name string, content interface{}, dest string) bool {
-	path := filepath.Join(dest, "vars", name+".yml")
+// Save the given interface to the given directory with the specified name,
+// the suffix is added by defautl
+func Save(content interface{}, dest, name string) bool {
+	path := filepath.Join(dest, name+".yml")
 	out, err := yaml.Marshal(&content)
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{

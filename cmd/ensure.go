@@ -1,12 +1,10 @@
 package cmd
 
 import (
-	"os/user"
-
-	"github.com/mbark/punkt/exec"
-
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+
+	"github.com/mbark/punkt/file"
+	"github.com/mbark/punkt/symlink"
 )
 
 var ensureCmd = &cobra.Command{
@@ -24,10 +22,7 @@ func init() {
 }
 
 func ensure() {
-	usr, err := user.Current()
-	if err != nil {
-		logrus.WithError(err).Fatal("Unable to get current user")
-	}
-
-	exec.Run("ansible-playbook", "main.yml", "-i", "inventory", "--become-user="+usr.Username)
+	symlinks := []symlink.Symlink{}
+	file.Read(dotfiles, "symlinks", &symlinks)
+	symlink.Ensure(symlinks)
 }

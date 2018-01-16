@@ -3,10 +3,10 @@ package cmd
 import (
 	"strings"
 
-	"github.com/mbark/punkt/mgr/homebrew"
-	"github.com/mbark/punkt/symlink"
-
 	"github.com/spf13/cobra"
+
+	"github.com/mbark/punkt/file"
+	"github.com/mbark/punkt/symlink"
 )
 
 var (
@@ -37,6 +37,6 @@ func init() {
 }
 
 func dump(cmd *cobra.Command, args []string) {
-	symlink.Dump(directories, depth, punktHome, dotfiles)
-	homebrew.Dump(punktHome)
+	symlinks := symlink.Dump(directories, depth)
+	file.Save(symlinks, dotfiles, "symlinks")
 }

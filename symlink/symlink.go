@@ -3,102 +3,73 @@ package symlink
 import (
 	"os"
 	"path/filepath"
-	"strings"
-
-	"github.com/mbark/punkt/db"
-	"github.com/mbark/punkt/path"
 
 	"github.com/sirupsen/logrus"
+
+	"github.com/mbark/punkt/path"
 )
 
-var blacklist = []string{".Trash", ".git"}
-
-type finder struct {
-	dir      string
-	depth    int
-	dotfiles string
-	Symlinks []symlink
-}
-
-type symlink struct {
+// Symlink describes a symlink, i.e. what it links from and what it links to
+type Symlink struct {
 	From string
 	To   string
 }
 
-// Dump ...
-func Dump(directories []string, depth int, dest, from string) {
-	symlinks := find(directories, depth, from)
-	logrus.WithFields(logrus.Fields{
-		"symlinks":    symlinks,
-		"directories": directories,
-		"depth":       depth,
-	}).Debug("Found the following symlinks")
-
-	db.SaveVars("symlinks", symlinks, dest)
+func (symlink Symlink) expand() Symlink {
+	return Symlink{
+		From: path.ExpandHome(symlink.From),
+		To:   path.ExpandHome(symlink.To),
+	}
 }
 
-func find(directories []string, depth int, from string) []symlink {
-	var symlinks []symlink
+// Create will construct the corresponding symlink. Returns true if the symlink
+// was successfully created, otherwise false.
+func (symlink Symlink) Create() bool {
+	logger := logrus.WithFields(logrus.Fields{
+		"to":   symlink.To,
+		"from": symlink.From,
+	})
 
-	for _, dir := range directories {
-		f := finder{
-			dir:      path.ExpandHome(dir),
-			depth:    depth,
-			dotfiles: from,
-			Symlinks: []symlink{},
-		}
-
-		logrus.WithFields(logrus.Fields{
-			"finder": f,
-		}).Debug("Searching for symlinks")
-
-		filepath.Walk(f.dir, f.walkFunc)
-		symlinks = append(symlinks, f.Symlinks...)
-	}
-
-	return symlinks
-}
-
-func (f *finder) walkFunc(currpath string, info os.FileInfo, err error) error {
-	if currpath == f.dir {
-		return nil
-	}
-
+	_, err := os.Stat(symlink.From)
 	if err != nil {
-		return nil
+		logger.WithError(err).Error("No such file")
+		return false
 	}
 
-	if info.Mode()&os.ModeSymlink != 0 {
-		to, err := os.Readlink(currpath)
-		if err != nil {
-			return err
-		}
-
-		if strings.HasPrefix(to, f.dotfiles) {
-			f.Symlinks = append(f.Symlinks, symlink{
-				To:   path.UnexpandHome(currpath),
-				From: path.UnexpandHome(to),
-			})
-		}
+	err = path.CreateNecessaryDirectories(symlink.To)
+	if err != nil {
+		logger.WithError(err).Error("Unable to create necessary directories")
+		return false
 	}
 
-	for _, val := range blacklist {
-		if strings.HasSuffix(currpath, val) {
-			return filepath.SkipDir
-		}
+	logger.Info("Creating symlink")
+
+	// os.symlink creates the symlink relative to the file that
+	// we symlink to, meaning that from must be given either relative to
+	// to the target or as an absolute path
+	path, err := filepath.Abs(symlink.From)
+	if err != nil {
+		logrus.WithError(err).Error("Unable to convert path to absolute")
+		return false
 	}
 
-	if info.IsDir() {
-		rel, err := filepath.Rel(f.dir, currpath)
-		if err != nil {
-			return err
-		}
-
-		if strings.Count(rel, "/") >= f.depth {
-			return filepath.SkipDir
-
-		}
+	err = os.Symlink(path, symlink.To)
+	if err != nil {
+		logrus.WithError(err).Error("Unable to create symlink")
+		return false
 	}
 
-	return nil
+	return true
+}
+
+// Exists returns true if the symlink already exists
+func (symlink Symlink) Exists() bool {
+	from, _ := os.Stat(symlink.From)
+	to, _ := os.Stat(symlink.To)
+
+	logrus.WithFields(logrus.Fields{
+		"to":   symlink.From,
+		"from": symlink.To,
+	}).Debug("Comparing if files are the same")
+	return os.SameFile(from, to)
 }

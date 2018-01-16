@@ -1,3 +1,0 @@
----
-punkt_config_home: "{{ ansible_env.HOME }}/.config/punkt"
-punkt_upgrade: no
