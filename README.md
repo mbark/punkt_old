@@ -14,8 +14,11 @@ Project goals:
 ## Current status and roadmap
 A list of features that I want included and their status. 
 
-- [ ] symlinks
+- [x] symlinks
   - [x] dump
   - [x] ensure
-  - [ ] use `survey` to select which directories to add
-  - [ ] configure directories to ignore
+  - [x] use `survey` to select which directories to add
+  - [x] configure directories to ignore
+- [ ] brew
+  - [ ] dump
+  - [ ] ensure

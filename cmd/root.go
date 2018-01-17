@@ -6,13 +6,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mbark/punkt/path"
-
-	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/kyokomi/emoji.v1"
+
+	"github.com/mbark/punkt/path"
 )
 
 var (
@@ -24,8 +23,6 @@ var (
 	punktHome        string
 	dotfiles         string
 )
-
-var magenta = color.New(color.FgMagenta).SprintFunc()
 
 var shortMessage = emoji.Sprint(":package: punkt; a dotfile manager to be dotty about")
 var longMessage = emoji.Sprintf(`:package: %s manages your dotfiles and ensures that they match how your
@@ -96,7 +93,7 @@ func readConfigFile() {
 }
 
 func setLogLevel() {
-	lvl, err := logrus.ParseLevel(logLevel)
+	lvl, err := logrus.ParseLevel(viper.GetString("logLevel"))
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"level": lvl,

@@ -7,20 +7,22 @@ import (
 
 	"github.com/mbark/punkt/path"
 
+	"github.com/gobwas/glob"
 	"github.com/sirupsen/logrus"
 )
 
-var blacklist = []string{".Trash", ".git"}
+var blacklist = []string{"*/.Trash", "*/.git"}
 
 type finder struct {
 	dir      string
 	depth    int
 	Symlinks []Symlink
+	ignore   []glob.Glob
 }
 
 // Dump ...
-func Dump(directories []string, depth int) []Symlink {
-	symlinks := find(directories, depth)
+func Dump(directories []string, depth int, ignore []string) []Symlink {
+	symlinks := find(directories, depth, ignore)
 	logrus.WithFields(logrus.Fields{
 		"symlinks":    symlinks,
 		"directories": directories,
@@ -30,7 +32,7 @@ func Dump(directories []string, depth int) []Symlink {
 	return symlinks
 }
 
-func find(directories []string, depth int) []Symlink {
+func find(directories []string, depth int, ignore []string) []Symlink {
 	var symlinks []Symlink
 
 	for _, dir := range directories {
@@ -38,6 +40,7 @@ func find(directories []string, depth int) []Symlink {
 			dir:      path.ExpandHome(dir),
 			depth:    depth,
 			Symlinks: []Symlink{},
+			ignore:   constructIgnoreGlobs(ignore),
 		}
 
 		logrus.WithFields(logrus.Fields{
@@ -51,6 +54,23 @@ func find(directories []string, depth int) []Symlink {
 	return symlinks
 }
 
+func constructIgnoreGlobs(ignore []string) []glob.Glob {
+	globs := []glob.Glob{}
+	for _, ignored := range append(blacklist, ignore...) {
+		glob, err := glob.Compile(ignored)
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"pattern": ignored,
+			}).WithError(err).Warn("Unable to compile pattern to glob, ignoring")
+			continue
+		}
+
+		globs = append(globs, glob)
+	}
+
+	return globs
+}
+
 func (f *finder) walkFunc(currpath string, info os.FileInfo, err error) error {
 	if currpath == f.dir {
 		return nil
@@ -58,6 +78,10 @@ func (f *finder) walkFunc(currpath string, info os.FileInfo, err error) error {
 
 	if err != nil {
 		return nil
+	}
+
+	if f.isBlacklisted(currpath) {
+		return filepath.SkipDir
 	}
 
 	if info.Mode()&os.ModeSymlink != 0 {
@@ -78,12 +102,6 @@ func (f *finder) walkFunc(currpath string, info os.FileInfo, err error) error {
 
 	}
 
-	for _, val := range blacklist {
-		if strings.HasSuffix(currpath, val) {
-			return filepath.SkipDir
-		}
-	}
-
 	if info.IsDir() {
 		rel, err := filepath.Rel(f.dir, currpath)
 		if err != nil {
@@ -97,4 +115,14 @@ func (f *finder) walkFunc(currpath string, info os.FileInfo, err error) error {
 	}
 
 	return nil
+}
+
+func (f finder) isBlacklisted(path string) bool {
+	for _, ignored := range f.ignore {
+		if ignored.Match(path) {
+			return true
+		}
+	}
+
+	return false
 }
