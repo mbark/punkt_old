@@ -12,6 +12,7 @@ import (
 
 	"github.com/mbark/punkt/brew"
 	"github.com/mbark/punkt/file"
+	"github.com/mbark/punkt/git"
 	"github.com/mbark/punkt/symlink"
 	"github.com/mbark/punkt/yarn"
 )
@@ -60,7 +61,8 @@ func init() {
 func dump(cmd *cobra.Command, args []string) {
 	// dumpSymlinks(cmd, args)
 	// dumpHomebrew(cmd, args)
-	dumpYarn(cmd, args)
+	// dumpYarn(cmd, args)
+	dumpGit(cmd, args)
 }
 
 func dumpSymlinks(cmd *cobra.Command, args []string) {
@@ -100,6 +102,13 @@ func dumpHomebrew(cmd *cobra.Command, args []string) {
 
 func dumpYarn(cmd *cobra.Command, args []string) {
 	files := yarn.Dump()
+	for _, f := range files {
+		addSymlink(f, "")
+	}
+}
+
+func dumpGit(cmd *cobra.Command, args []string) {
+	files := git.Dump()
 	for _, f := range files {
 		addSymlink(f, "")
 	}

@@ -20,13 +20,11 @@ func PrintOutputToUser(cmd *exec.Cmd) {
 
 // CaptureOutput captures std{out,err} of the command in the byte buffers
 // returned. This is useful when you want to use the output of the command.
-func CaptureOutput(cmd *exec.Cmd) (bytes.Buffer, bytes.Buffer) {
+func CaptureOutput(cmd *exec.Cmd) *bytes.Buffer {
 	var stdout bytes.Buffer
-	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
 
-	return stdout, stderr
+	return &stdout
 }
 
 // Run ...
@@ -42,5 +40,5 @@ func Run(cmd *exec.Cmd) {
 		logger.WithError(err).Fatal("Unable to run command")
 	}
 
-	logger.Debug("Command finished without error")
+	logger.WithField("rawCmd", cmd).Debug("Command finished without error")
 }

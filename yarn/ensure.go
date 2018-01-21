@@ -18,7 +18,7 @@ func Ensure() {
 
 func workingDir() string {
 	cmd := exec.Command("yarn", "global", "dir")
-	stdout, _ := run.CaptureOutput(cmd)
+	stdout := run.CaptureOutput(cmd)
 	run.Run(cmd)
 
 	return strings.TrimSpace(stdout.String())
