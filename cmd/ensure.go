@@ -5,6 +5,7 @@ import (
 
 	"github.com/mbark/punkt/brew"
 	"github.com/mbark/punkt/file"
+	"github.com/mbark/punkt/git"
 	"github.com/mbark/punkt/symlink"
 	"github.com/mbark/punkt/yarn"
 )
@@ -30,4 +31,6 @@ func ensure() {
 
 	brew.Ensure()
 	yarn.Ensure()
+
+	git.Ensure(dotfiles, punktHome)
 }

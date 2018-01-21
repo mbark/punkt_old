@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/mbark/punkt/brew"
+	"github.com/mbark/punkt/git"
 	"github.com/mbark/punkt/yarn"
 )
 
@@ -24,4 +25,5 @@ func init() {
 func update() {
 	brew.Update()
 	yarn.Update()
+	git.Update(dotfiles, punktHome)
 }

@@ -1,11 +1,15 @@
 package git
 
 import (
+	"io/ioutil"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/sirupsen/logrus"
+	"gopkg.in/src-d/go-git.v4/config"
 
 	"github.com/mbark/punkt/run"
 )
@@ -13,7 +17,12 @@ import (
 var fileRegexp = regexp.MustCompile(`file\:(?P<File>.*?)\s.*`)
 
 // Dump ...
-func Dump() []string {
+func Dump(punktHome string) ([]string, []config.Config) {
+	return dumpConfig(), dumpRepos(punktHome)
+}
+
+func dumpConfig() []string {
+	// this is currently not suppported via the git library
 	cmd := exec.Command("git", "config", "--list", "--show-origin", "--global")
 	stdout := run.CaptureOutput(cmd)
 	run.Run(cmd)
@@ -39,4 +48,35 @@ func Dump() []string {
 	}
 
 	return files
+}
+
+func dumpRepos(punktHome string) []config.Config {
+	reposDir := reposDirectory(punktHome)
+	logger := logrus.WithField("reposDir", reposDir)
+	files, err := ioutil.ReadDir(reposDir)
+
+	if err != nil {
+		logger.WithError(err).Fatal("Unable to list files in the repos directory")
+	}
+
+	repos := []config.Config{}
+	for _, file := range files {
+		if file.Mode()&os.ModeDir == 0 {
+			continue
+		}
+
+		repo := getRepo(filepath.Join(reposDir, file.Name()))
+		if repo == nil {
+			continue
+		}
+
+		conf, err := repo.Config()
+		if err != nil {
+			logger.WithError(err).Error("Unable to get git repo config")
+		}
+
+		repos = append(repos, *conf)
+	}
+
+	return repos
 }

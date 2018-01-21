@@ -60,8 +60,8 @@ func init() {
 
 func dump(cmd *cobra.Command, args []string) {
 	// dumpSymlinks(cmd, args)
-	// dumpHomebrew(cmd, args)
-	// dumpYarn(cmd, args)
+	dumpHomebrew(cmd, args)
+	dumpYarn(cmd, args)
 	dumpGit(cmd, args)
 }
 
@@ -108,8 +108,10 @@ func dumpYarn(cmd *cobra.Command, args []string) {
 }
 
 func dumpGit(cmd *cobra.Command, args []string) {
-	files := git.Dump()
+	files, repos := git.Dump(punktHome)
 	for _, f := range files {
 		addSymlink(f, "")
 	}
+
+	file.SaveYaml(repos, dotfiles, "repos")
 }
