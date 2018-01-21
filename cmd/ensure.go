@@ -6,6 +6,7 @@ import (
 	"github.com/mbark/punkt/brew"
 	"github.com/mbark/punkt/file"
 	"github.com/mbark/punkt/symlink"
+	"github.com/mbark/punkt/yarn"
 )
 
 var ensureCmd = &cobra.Command{
@@ -27,5 +28,6 @@ func ensure() {
 	file.Read(&symlinks, dotfiles, "symlinks")
 	symlink.Ensure(symlinks)
 
-	brew.Ensure(dotfiles)
+	brew.Ensure()
+	yarn.Ensure()
 }

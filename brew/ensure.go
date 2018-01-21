@@ -3,6 +3,6 @@ package brew
 import ()
 
 // Ensure ...
-func Ensure(dotfiles string) {
+func Ensure() {
 	bundle("--no-upgrade")
 }

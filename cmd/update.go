@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/mbark/punkt/brew"
+	"github.com/mbark/punkt/yarn"
 )
 
 var updateCmd = &cobra.Command{
@@ -22,4 +23,5 @@ func init() {
 // Update ...
 func update() {
 	brew.Update()
+	yarn.Update()
 }
