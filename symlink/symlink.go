@@ -22,6 +22,13 @@ func (symlink Symlink) expand() Symlink {
 	}
 }
 
+func (symlink Symlink) unexpend() Symlink {
+	return Symlink{
+		To:   path.UnexpandHome(symlink.From),
+		From: path.UnexpandHome(symlink.To),
+	}
+}
+
 // Create will construct the corresponding symlink. Returns true if the symlink
 // was successfully created, otherwise false.
 func (symlink Symlink) Create() bool {

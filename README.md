@@ -19,6 +19,7 @@ A list of features that I want included and their status.
   - [x] ensure
   - [x] use `survey` to select which directories to add
   - [x] configure directories to ignore
+  - [x] add a file as a symlink
 - [ ] brew
   - [ ] dump
   - [ ] ensure

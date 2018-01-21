@@ -23,6 +23,6 @@ func init() {
 
 func ensure() {
 	symlinks := []symlink.Symlink{}
-	file.Read(dotfiles, "symlinks", &symlinks)
+	file.Read(&symlinks, dotfiles, "symlinks")
 	symlink.Ensure(symlinks)
 }

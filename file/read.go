@@ -9,7 +9,7 @@ import (
 )
 
 // Read the file in the given directory and marshal it to the given struct
-func Read(dest, name string, out interface{}) {
+func Read(out interface{}, dest, name string) {
 	path := filepath.Join(dest, name+".yml")
 	logger := logrus.WithFields(logrus.Fields{
 		"file": path,
