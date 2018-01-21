@@ -28,7 +28,11 @@ func add(cmd *cobra.Command, args []string) {
 		to = args[1]
 	}
 
-	created := symlink.Add(args[0], to, dotfiles)
+	addSymlink(args[0], to)
+}
+
+func addSymlink(from, to string) {
+	created := symlink.Add(from, to, dotfiles)
 	if created == nil {
 		return
 	}
@@ -45,5 +49,5 @@ func add(cmd *cobra.Command, args []string) {
 
 	symlinks = append(symlinks, *created)
 
-	file.Save(symlinks, dotfiles, "symlinks")
+	file.SaveYaml(symlinks, dotfiles, "symlinks")
 }

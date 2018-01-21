@@ -10,19 +10,29 @@ import (
 	"github.com/mbark/punkt/path"
 )
 
-// Save the given interface to the given directory with the specified name,
+// SaveYaml the given interface to the given directory with the specified name,
 // the suffix is added by defautl
-func Save(content interface{}, dest, name string) bool {
-	path := filepath.Join(dest, name+".yml")
+func SaveYaml(content interface{}, dest, name string) bool {
 	out, err := yaml.Marshal(&content)
 	if err != nil {
-		logrus.WithError(err).WithFields(logrus.Fields{
-			"role": path,
-		}).WithError(err).Error("Unable to marshal db to yaml")
+		logrus.WithError(err).Error("Unable to marshal db to yaml")
 		return false
 	}
 
+	path := filepath.Join(dest, name+".yml")
 	s := newSaver(path, out)
+	return s.Save()
+}
+
+// Save ...
+func Save(content string, dest, name string) bool {
+	path := filepath.Join(dest, name)
+
+	logrus.WithFields(logrus.Fields{
+		"content": content,
+		"path":    path,
+	}).Debug("Saving content to file")
+	s := newSaver(path, []byte(content))
 	return s.Save()
 }
 

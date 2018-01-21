@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/mbark/punkt/brew"
 	"github.com/mbark/punkt/file"
 	"github.com/mbark/punkt/symlink"
 )
@@ -25,4 +26,6 @@ func ensure() {
 	symlinks := []symlink.Symlink{}
 	file.Read(&symlinks, dotfiles, "symlinks")
 	symlink.Ensure(symlinks)
+
+	brew.Ensure(dotfiles)
 }

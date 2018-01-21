@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 	"gopkg.in/AlecAivazis/survey.v1"
 
+	"github.com/mbark/punkt/brew"
 	"github.com/mbark/punkt/file"
 	"github.com/mbark/punkt/symlink"
 )
@@ -56,6 +57,11 @@ func init() {
 }
 
 func dump(cmd *cobra.Command, args []string) {
+	// dumpSymlinks(cmd, args)
+	dumpHomebrew(cmd, args)
+}
+
+func dumpSymlinks(cmd *cobra.Command, args []string) {
 	symlinks := symlink.Dump(directories, depth, viper.GetStringSlice("ignore"))
 	mapping := make(map[string]symlink.Symlink)
 	options := []string{}
@@ -82,5 +88,10 @@ func dump(cmd *cobra.Command, args []string) {
 		selectedSymlinks = append(selectedSymlinks, mapping[msg])
 	}
 
-	file.Save(selectedSymlinks, dotfiles, "symlinks")
+	file.SaveYaml(selectedSymlinks, dotfiles, "symlinks")
+}
+
+func dumpHomebrew(cmd *cobra.Command, args []string) {
+	brewfile := brew.Dump()
+	addSymlink(brewfile, "")
 }

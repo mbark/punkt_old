@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+
+	"github.com/mbark/punkt/brew"
 )
 
 var updateCmd = &cobra.Command{
@@ -9,7 +11,7 @@ var updateCmd = &cobra.Command{
 	Short: "update all packages",
 	Long:  `update all package versions`,
 	Run: func(cmd *cobra.Command, args []string) {
-		Update()
+		update()
 	},
 }
 
@@ -18,5 +20,6 @@ func init() {
 }
 
 // Update ...
-func Update() {
+func update() {
+	brew.Update()
 }
