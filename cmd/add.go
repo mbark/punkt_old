@@ -1,11 +1,10 @@
 package cmd
 
 import (
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/mbark/punkt/file"
-	"github.com/mbark/punkt/symlink"
+	"github.com/mbark/punkt/conf"
+	"github.com/mbark/punkt/mgr/symlink"
 )
 
 // ensureCmd represents the ensure command
@@ -28,26 +27,9 @@ func add(cmd *cobra.Command, args []string) {
 		to = args[1]
 	}
 
-	addSymlink(args[0], to)
-}
-
-func addSymlink(from, to string) {
-	created := symlink.Add(from, to, dotfiles)
-	if created == nil {
-		return
-	}
-
-	symlinks := []symlink.Symlink{}
-	file.Read(&symlinks, dotfiles, "symlinks")
-
-	for _, s := range symlinks {
-		if s == *created {
-			logrus.WithField("symlink", created).Info("Symlink already stored in file, not adding")
-			return
-		}
-	}
-
-	symlinks = append(symlinks, *created)
-
-	file.SaveYaml(symlinks, dotfiles, "symlinks")
+	mgr := symlink.NewManager(conf.Config{
+		Dotfiles:  dotfiles,
+		PunktHome: punktHome,
+	})
+	mgr.Add(args[0], to)
 }

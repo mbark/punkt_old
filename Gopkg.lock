@@ -2,22 +2,10 @@
 
 
 [[projects]]
-  name = "github.com/fatih/color"
-  packages = ["."]
-  revision = "570b54cabe6b8eb0bc2dfce68d964677d63b5260"
-  version = "v1.5.0"
-
-[[projects]]
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
   revision = "629574ca2a5df945712d3079857300b5e4da0236"
   version = "v1.4.2"
-
-[[projects]]
-  name = "github.com/gobwas/glob"
-  packages = [".","compiler","match","syntax","syntax/ast","syntax/lexer","util/runes","util/strings"]
-  revision = "bea32b9cd2d6f55753d94a28e959b13f0244797a"
-  version = "v0.2.2"
 
 [[projects]]
   branch = "master"
@@ -48,24 +36,6 @@
   packages = ["."]
   revision = "be5ece7dd465ab0765a9682137865547526d1dfb"
   version = "v1.7.3"
-
-[[projects]]
-  name = "github.com/mattn/go-colorable"
-  packages = ["."]
-  revision = "167de6bfdfba052fa6b2d3664c8f5272e23c9072"
-  version = "v0.0.9"
-
-[[projects]]
-  name = "github.com/mattn/go-isatty"
-  packages = ["."]
-  revision = "0360b2af4f38e8d38c7fce2a9f4e702702d73a39"
-  version = "v0.0.3"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/mgutz/ansi"
-  packages = ["."]
-  revision = "9520e82c474b0a04dd04f8a40959027271bab992"
 
 [[projects]]
   branch = "master"
@@ -176,12 +146,6 @@
   revision = "88f656faf3f37f690df1a32515b479415e1a6769"
 
 [[projects]]
-  name = "gopkg.in/AlecAivazis/survey.v1"
-  packages = [".","core","terminal"]
-  revision = "0aa8b6a162b391fe2d95648b7677d1d6ac2090a6"
-  version = "v1.4.1"
-
-[[projects]]
   name = "gopkg.in/kyokomi/emoji.v1"
   packages = ["."]
   revision = "7e06b236c489543f53868841f188a294e3383eab"
@@ -214,6 +178,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "319adb60907c96048ff67c917026c4bee6823ee7e930a4f49ba3012efea76407"
+  inputs-digest = "c8b7f47d39350567f8c94f2fdca094f89c03515d1eb246e806b8729780eff70b"
   solver-name = "gps-cdcl"
   solver-version = 1

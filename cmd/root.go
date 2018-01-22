@@ -11,30 +11,26 @@ import (
 	"github.com/spf13/viper"
 	"gopkg.in/kyokomi/emoji.v1"
 
+	"github.com/mbark/punkt/conf"
+	"github.com/mbark/punkt/mgr"
 	"github.com/mbark/punkt/path"
 )
 
 var (
-	defaultConfig    = path.ExpandHome("~/.config/punkt/config")
-	defaultPunktHome = path.ExpandHome("~/.config/punkt")
-	defaultDotfiles  = path.ExpandHome("~/.dotfiles")
-	logLevel         string
-	config           string
-	punktHome        string
-	dotfiles         string
+	logLevel   string
+	configFile = path.ExpandHome("~/.config/punkt/config")
+	punktHome  = path.ExpandHome("~/.config/punkt")
+	dotfiles   = path.ExpandHome("~/.dotfiles")
 )
 
-var shortMessage = emoji.Sprint(":package: punkt; a dotfile manager to be dotty about")
-var longMessage = emoji.Sprintf(`:package: %s manages your dotfiles and ensures that they match how your
-environment actually looks. It can handle everything from simple
-dotfile repos that just create a few symlinks, to those that
-want to ensure all installed packages are kept up date.`, magenta("punkt"))
+var config conf.Config
+var managers []mgr.Manager
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	Use:   "punkt",
-	Short: shortMessage,
-	Long:  longMessage,
+	Short: emoji.Sprint(":package: punkt; a dotfile manager to be dotty about"),
+	Long:  ``,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -49,10 +45,10 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	RootCmd.PersistentFlags().StringVarP(&config, "config", "c", defaultConfig, `The configuration file to read custom configuration from`)
+	RootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", configFile, `The configuration file to read custom configuration from`)
 	RootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "info", `Set the logging level ("debug"|"info"|"warn"|"error"|"fatal")`)
-	RootCmd.PersistentFlags().StringVarP(&punktHome, "punkt-home", "p", defaultPunktHome, `Where all punkt configuration files should be stored`)
-	RootCmd.PersistentFlags().StringVarP(&dotfiles, "dotfiles", "d", defaultDotfiles, `The directory containing the user's dotfiles`)
+	RootCmd.PersistentFlags().StringVarP(&punktHome, "punkt-home", "p", punktHome, `Where all punkt configuration files should be stored`)
+	RootCmd.PersistentFlags().StringVarP(&dotfiles, "dotfiles", "d", dotfiles, `The directory containing the user's dotfiles`)
 
 	viper.BindPFlag("logLevel", RootCmd.PersistentFlags().Lookup("log-level"))
 	viper.BindPFlag("punktHome", RootCmd.PersistentFlags().Lookup("punkt-home"))
@@ -62,21 +58,24 @@ func init() {
 func initConfig() {
 	readConfigFile()
 	setLogLevel()
+
+	config = conf.Config{
+		Dotfiles:  dotfiles,
+		PunktHome: punktHome,
+	}
+
+	managers = mgr.All(config)
 }
 
 func readConfigFile() {
-	if config == "" {
-		config = defaultConfig
-	}
-
 	logger := logrus.WithFields(logrus.Fields{
 		"config": config,
 	})
 
-	config = path.ExpandHome(config)
+	configFile = path.ExpandHome(configFile)
 	logger.Info("Reading configuration file")
 
-	abs, err := filepath.Abs(config)
+	abs, err := filepath.Abs(configFile)
 	if err != nil {
 		logger.WithError(err).Error("Error reading provided configuration file")
 	}

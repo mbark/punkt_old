@@ -6,11 +6,12 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/mbark/punkt/file"
 	"github.com/mbark/punkt/path"
 )
 
 // Add ...
-func Add(from, to, dotfiles string) *Symlink {
+func (mgr Manager) Add(from, to string) {
 	from, err := filepath.Abs(from)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
@@ -28,7 +29,7 @@ func Add(from, to, dotfiles string) *Symlink {
 	}
 
 	if to == "" {
-		to = filepath.Join(dotfiles, relFrom)
+		to = filepath.Join(mgr.config.Dotfiles, relFrom)
 	}
 
 	symlink := Symlink{
@@ -43,7 +44,7 @@ func Add(from, to, dotfiles string) *Symlink {
 	if symlink.Exists() {
 		logger.Info("Symlink already exists, not re-recreating")
 		symlink = symlink.unexpend()
-		return &symlink
+		return
 	}
 
 	path.CreateNecessaryDirectories(to)
@@ -52,10 +53,26 @@ func Add(from, to, dotfiles string) *Symlink {
 		logger.WithError(err).Fatal("Unable to move file")
 	}
 
-	if symlink.Create() {
-		symlink = symlink.unexpend()
-		return &symlink
+	if !symlink.Create() {
+		return
 	}
 
-	return nil
+	symlink = symlink.unexpend()
+	mgr.saveSymlink(symlink)
+}
+
+func (mgr Manager) saveSymlink(symlink Symlink) {
+	symlinks := []Symlink{}
+	file.Read(&symlinks, mgr.config.Dotfiles, "symlinks")
+
+	for _, s := range symlinks {
+		if s == symlink {
+			logrus.WithField("symlink", symlink).Info("Symlink already stored in file, not adding")
+			return
+		}
+	}
+
+	symlinks = append(symlinks, symlink)
+
+	file.SaveYaml(symlinks, mgr.config.Dotfiles, "symlinks")
 }

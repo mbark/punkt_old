@@ -2,12 +2,6 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-
-	"github.com/mbark/punkt/brew"
-	"github.com/mbark/punkt/file"
-	"github.com/mbark/punkt/git"
-	"github.com/mbark/punkt/symlink"
-	"github.com/mbark/punkt/yarn"
 )
 
 var ensureCmd = &cobra.Command{
@@ -25,12 +19,7 @@ func init() {
 }
 
 func ensure() {
-	symlinks := []symlink.Symlink{}
-	file.Read(&symlinks, dotfiles, "symlinks")
-	symlink.Ensure(symlinks)
-
-	brew.Ensure()
-	yarn.Ensure()
-
-	git.Ensure(dotfiles, punktHome)
+	for i := range managers {
+		managers[i].Ensure()
+	}
 }

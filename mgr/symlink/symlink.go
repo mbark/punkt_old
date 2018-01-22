@@ -6,8 +6,22 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/mbark/punkt/conf"
+	"github.com/mbark/punkt/file"
 	"github.com/mbark/punkt/path"
 )
+
+// Manager ...
+type Manager struct {
+	config conf.Config
+}
+
+// NewManager ...
+func NewManager(c conf.Config) *Manager {
+	return &Manager{
+		config: c,
+	}
+}
 
 // Symlink describes a symlink, i.e. what it links from and what it links to
 type Symlink struct {
@@ -79,4 +93,29 @@ func (symlink Symlink) Exists() bool {
 		"from": symlink.To,
 	}).Debug("Comparing if files are the same")
 	return os.SameFile(from, to)
+}
+
+// Dump ...
+func (mgr Manager) Dump() {}
+
+// Update ...
+func (mgr Manager) Update() {}
+
+// Ensure goes through the list of symlinks ensuring they exist
+func (mgr Manager) Ensure() {
+	symlinks := []Symlink{}
+	file.Read(&symlinks, mgr.config.Dotfiles, "symlinks")
+
+	for _, symlink := range symlinks {
+		s := symlink.expand()
+
+		if s.Exists() {
+			logrus.WithFields(logrus.Fields{
+				"from": s.From,
+				"to":   s.To,
+			}).Debug("Symlink already exists, not creating")
+		} else {
+			s.Create()
+		}
+	}
 }
