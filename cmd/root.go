@@ -3,10 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/kyokomi/emoji.v1"
@@ -56,45 +53,6 @@ func init() {
 }
 
 func initConfig() {
-	readConfigFile()
-	setLogLevel()
-
-	home := path.GetUserHome()
-	config = conf.NewConfig(punktHome, dotfiles, home)
+	config = conf.NewConfig(configFile)
 	managers = mgr.All(*config)
-}
-
-func readConfigFile() {
-	logger := logrus.WithFields(logrus.Fields{
-		"config": config,
-	})
-
-	configFile = path.ExpandHome(configFile)
-	logger.Info("Reading configuration file")
-
-	abs, err := filepath.Abs(configFile)
-	if err != nil {
-		logger.WithError(err).Error("Error reading provided configuration file")
-	}
-
-	base := filepath.Base(abs)
-	path := filepath.Dir(abs)
-
-	viper.SetConfigName(strings.Split(base, ".")[0])
-	viper.AddConfigPath(path)
-
-	if err := viper.ReadInConfig(); err != nil {
-		logger.WithError(err).Error("Failed to read config file")
-	}
-}
-
-func setLogLevel() {
-	lvl, err := logrus.ParseLevel(viper.GetString("logLevel"))
-	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"level": lvl,
-		}).WithError(err).Fatal("Unable to parse logging level")
-	}
-
-	logrus.SetLevel(lvl)
 }

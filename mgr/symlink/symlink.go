@@ -80,12 +80,7 @@ func (symlink Symlink) Create() error {
 		return err
 	}
 
-	err = os.Symlink(path, symlink.To)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return os.Symlink(path, symlink.To)
 }
 
 // Exists returns true if the symlink already exists
