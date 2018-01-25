@@ -29,6 +29,14 @@ type Symlink struct {
 	To   string
 }
 
+// NewSymlink creates a new symlink
+func NewSymlink(from, to string) *Symlink {
+	return &Symlink{
+		From: from,
+		To:   to,
+	}
+}
+
 func (symlink Symlink) expand() Symlink {
 	return Symlink{
 		From: path.ExpandHome(symlink.From),
@@ -45,7 +53,7 @@ func (symlink Symlink) unexpend() Symlink {
 
 // Create will construct the corresponding symlink. Returns true if the symlink
 // was successfully created, otherwise false.
-func (symlink Symlink) Create() bool {
+func (symlink Symlink) Create() error {
 	logger := logrus.WithFields(logrus.Fields{
 		"to":   symlink.To,
 		"from": symlink.From,
@@ -53,14 +61,13 @@ func (symlink Symlink) Create() bool {
 
 	_, err := os.Stat(symlink.From)
 	if err != nil {
-		logger.WithError(err).Error("No such file")
-		return false
+		return err
 	}
 
 	err = path.CreateNecessaryDirectories(symlink.To)
 	if err != nil {
 		logger.WithError(err).Error("Unable to create necessary directories")
-		return false
+		return err
 	}
 
 	logger.Info("Creating symlink")
@@ -70,17 +77,15 @@ func (symlink Symlink) Create() bool {
 	// to the target or as an absolute path
 	path, err := filepath.Abs(symlink.From)
 	if err != nil {
-		logrus.WithError(err).Error("Unable to convert path to absolute")
-		return false
+		return err
 	}
 
 	err = os.Symlink(path, symlink.To)
 	if err != nil {
-		logrus.WithError(err).Error("Unable to create symlink")
-		return false
+		return err
 	}
 
-	return true
+	return nil
 }
 
 // Exists returns true if the symlink already exists

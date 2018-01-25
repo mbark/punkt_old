@@ -21,7 +21,8 @@ func CreateNecessaryDirectories(file string) error {
 func GetUserHome() string {
 	usr, err := user.Current()
 	if err != nil {
-		logrus.WithError(err).Fatal("Unable to get current user")
+		logrus.WithError(err).Fatal("Unable to get user home")
+		return ""
 	}
 
 	return usr.HomeDir

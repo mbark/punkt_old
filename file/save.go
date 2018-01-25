@@ -12,11 +12,11 @@ import (
 
 // SaveYaml the given interface to the given directory with the specified name,
 // the suffix is added by defautl
-func SaveYaml(content interface{}, dest, name string) bool {
+func SaveYaml(content interface{}, dest, name string) error {
 	out, err := yaml.Marshal(&content)
 	if err != nil {
 		logrus.WithError(err).Error("Unable to marshal db to yaml")
-		return false
+		return err
 	}
 
 	path := filepath.Join(dest, name+".yml")
@@ -25,7 +25,7 @@ func SaveYaml(content interface{}, dest, name string) bool {
 }
 
 // Save ...
-func Save(content string, dest, name string) bool {
+func Save(content string, dest, name string) error {
 	path := filepath.Join(dest, name)
 
 	logrus.WithFields(logrus.Fields{
@@ -54,29 +54,30 @@ func newSaver(path string, content []byte) *saver {
 	}
 }
 
-func (s saver) Save() bool {
+func (s saver) Save() error {
 	err := path.CreateNecessaryDirectories(s.path)
 	if err != nil {
 		s.logger.WithError(err).Error("Unable to create necessary directories")
-		return false
+		return err
 	}
 
 	f, err := os.Create(s.path)
 	if err != nil {
-		s.logger.WithError(err).Error("Unable to create file")
-		return false
+		return err
 	}
 
 	defer f.Close()
 
 	_, err = f.Write(s.content)
 	if err != nil {
-		s.logger.WithError(err).Error("Unable to write to file")
-		return false
+		return err
 	}
 
-	f.Sync()
+	err = f.Sync()
+	if err != nil {
+		return err
+	}
 
 	s.logger.Info("Successfully wrote to backend database file")
-	return true
+	return nil
 }

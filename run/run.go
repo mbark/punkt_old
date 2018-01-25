@@ -28,7 +28,7 @@ func CaptureOutput(cmd *exec.Cmd) *bytes.Buffer {
 }
 
 // Run ...
-func Run(cmd *exec.Cmd) {
+func Run(cmd *exec.Cmd) error {
 	logger := logrus.WithFields(logrus.Fields{
 		"cmd": strings.Join(cmd.Args, " "),
 	})
@@ -37,8 +37,10 @@ func Run(cmd *exec.Cmd) {
 	err := cmd.Run()
 
 	if err != nil {
-		logger.WithError(err).Fatal("Unable to run command")
+		logger.WithError(err).Error("Unable to run command")
+		return err
 	}
 
 	logger.WithField("rawCmd", cmd).Debug("Command finished without error")
+	return nil
 }

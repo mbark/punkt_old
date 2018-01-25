@@ -5,9 +5,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/mbark/punkt/conf"
 	"github.com/mbark/punkt/mgr/symlink"
-	"github.com/mbark/punkt/path"
 	"github.com/mbark/punkt/run"
 )
 
@@ -25,16 +26,21 @@ func NewManager(c conf.Config) *Manager {
 
 // Dump ...
 func (mgr Manager) Dump() {
-	configDir := filepath.Join(path.GetUserHome(), ".config", "yarn", "global")
+	configDir := filepath.Join(mgr.config.UserHome, ".config", "yarn", "global")
 	symlinks := []string{
 		filepath.Join(configDir, "yarn.lock"),
 		filepath.Join(configDir, "package.json"),
-		filepath.Join(filepath.Join(path.GetUserHome(), ".yarnrc")),
+		filepath.Join(filepath.Join(mgr.config.UserHome, ".yarnrc")),
 	}
 
 	for _, s := range symlinks {
 		symlinkMgr := symlink.NewManager(mgr.config)
-		symlinkMgr.Add(s, "")
+		err := symlinkMgr.Add(s, "")
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"symlink": s,
+			}).WithError(err).Fatal("Unable to add symlink")
+		}
 	}
 }
 

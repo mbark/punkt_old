@@ -6,7 +6,6 @@ import (
 
 	"github.com/mbark/punkt/conf"
 	"github.com/mbark/punkt/mgr/symlink"
-	"github.com/mbark/punkt/path"
 	"github.com/mbark/punkt/run"
 )
 
@@ -22,19 +21,19 @@ func NewManager(c conf.Config) *Manager {
 	}
 }
 
-func (mgr Manager) bundle(args ...string) {
+func (mgr Manager) bundle(args ...string) error {
 	arguments := append([]string{"bundle"}, args...)
 	arguments = append(arguments, "--global")
 
 	cmd := exec.Command("brew", arguments...)
 	run.PrintOutputToUser(cmd)
-	run.Run(cmd)
+	return run.Run(cmd)
 }
 
 // Dump ...
 func (mgr Manager) Dump() {
 	mgr.bundle("dump", "--force")
-	brewfile := filepath.Join(path.GetUserHome(), ".Brewfile")
+	brewfile := filepath.Join(mgr.config.UserHome, ".Brewfile")
 	symlinkMgr := symlink.NewManager(mgr.config)
 	symlinkMgr.Add(brewfile, "")
 }

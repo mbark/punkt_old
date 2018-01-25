@@ -9,7 +9,7 @@ import (
 )
 
 // Read the file in the given directory and marshal it to the given struct
-func Read(out interface{}, dest, name string) {
+func Read(out interface{}, dest, name string) error {
 	path := filepath.Join(dest, name+".yml")
 	logger := logrus.WithFields(logrus.Fields{
 		"file": path,
@@ -17,11 +17,14 @@ func Read(out interface{}, dest, name string) {
 
 	in, err := ioutil.ReadFile(path)
 	if err != nil {
-		logger.WithError(err).Fatal("Unable to read file")
+		return err
 	}
 
 	err = yaml.Unmarshal(in, out)
 	if err != nil {
-		logger.WithError(err).Fatal("Unable to unmarshal file to yaml")
+		logger.WithError(err).Error("Unable to unmarshal file to yaml")
+		return err
 	}
+
+	return nil
 }

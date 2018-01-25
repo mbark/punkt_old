@@ -13,11 +13,14 @@ import (
 
 var fileRegexp = regexp.MustCompile(`file\:(?P<File>.*?)\s.*`)
 
-func dumpConfig() []string {
+func dumpConfig() ([]string, error) {
 	// this is currently not suppported via the git library
 	cmd := exec.Command("git", "config", "--list", "--show-origin", "--global")
 	stdout := run.CaptureOutput(cmd)
-	run.Run(cmd)
+	err := run.Run(cmd)
+	if err != nil {
+		return []string{}, err
+	}
 
 	output := strings.TrimSpace(stdout.String())
 	rows := strings.Split(output, "\n")
@@ -36,7 +39,7 @@ func dumpConfig() []string {
 		files = append(files, key)
 	}
 
-	return files
+	return files, nil
 }
 
 func dumpRepos(reposDir string) ([]gitRepo, error) {

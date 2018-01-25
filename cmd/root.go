@@ -23,7 +23,7 @@ var (
 	dotfiles   = path.ExpandHome("~/.dotfiles")
 )
 
-var config conf.Config
+var config *conf.Config
 var managers []mgr.Manager
 
 // RootCmd represents the base command when called without any subcommands
@@ -59,12 +59,9 @@ func initConfig() {
 	readConfigFile()
 	setLogLevel()
 
-	config = conf.Config{
-		Dotfiles:  dotfiles,
-		PunktHome: punktHome,
-	}
-
-	managers = mgr.All(config)
+	home := path.GetUserHome()
+	config = conf.NewConfig(punktHome, dotfiles, home)
+	managers = mgr.All(*config)
 }
 
 func readConfigFile() {

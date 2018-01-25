@@ -62,7 +62,10 @@ func (mgr Manager) Ensure() {
 
 // Dump ...
 func (mgr Manager) Dump() {
-	configFiles := dumpConfig()
+	configFiles, err := dumpConfig()
+	if err != nil {
+		logrus.WithError(err).Error("Unable to find and save git configuration files")
+	}
 
 	symlinkMgr := symlink.NewManager(mgr.config)
 	for _, f := range configFiles {
