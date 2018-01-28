@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -20,6 +21,9 @@ func init() {
 // Update ...
 func update() {
 	for i := range managers {
-		managers[i].Update()
+		err := managers[i].Update()
+		if err != nil {
+			logrus.WithField("manager", managers[i]).WithError(err).Error("Command ensure failed for manager")
+		}
 	}
 }

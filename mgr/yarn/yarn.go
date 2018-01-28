@@ -1,6 +1,7 @@
 package yarn
 
 import (
+	"fmt"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -25,7 +26,7 @@ func NewManager(c conf.Config) *Manager {
 }
 
 // Dump ...
-func (mgr Manager) Dump() {
+func (mgr Manager) Dump() error {
 	configDir := filepath.Join(mgr.config.UserHome, ".config", "yarn", "global")
 	symlinks := []string{
 		filepath.Join(configDir, "yarn.lock"),
@@ -33,6 +34,7 @@ func (mgr Manager) Dump() {
 		filepath.Join(filepath.Join(mgr.config.UserHome, ".yarnrc")),
 	}
 
+	failed := []string{}
 	for _, s := range symlinks {
 		symlinkMgr := symlink.NewManager(mgr.config)
 		err := symlinkMgr.Add(s, "")
@@ -40,17 +42,24 @@ func (mgr Manager) Dump() {
 			logrus.WithFields(logrus.Fields{
 				"symlink": s,
 			}).WithError(err).Fatal("Unable to add symlink")
+			failed = append(failed, s)
 		}
 	}
+
+	if len(failed) > 0 {
+		return fmt.Errorf("The following symlinks could not be added: %v", failed)
+	}
+
+	return nil
 }
 
 // Ensure ...
-func (mgr Manager) Ensure() {
+func (mgr Manager) Ensure() error {
 	cmd := exec.Command("yarn")
 	run.PrintOutputToUser(cmd)
 	cmd.Dir = workingDir()
 
-	run.Run(cmd)
+	return run.Run(cmd)
 }
 
 func workingDir() string {
@@ -62,8 +71,8 @@ func workingDir() string {
 }
 
 // Update ...
-func (mgr Manager) Update() {
+func (mgr Manager) Update() error {
 	cmd := exec.Command("yarn", "global", "upgrade")
 	run.PrintOutputToUser(cmd)
-	run.Run(cmd)
+	return run.Run(cmd)
 }

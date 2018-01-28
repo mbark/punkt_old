@@ -1,6 +1,7 @@
 package git
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/mbark/punkt/conf"
@@ -35,33 +36,52 @@ func (mgr Manager) repos() []gitRepo {
 }
 
 // Update ...
-func (mgr Manager) Update() {
+func (mgr Manager) Update() error {
+	failed := []string{}
 	for _, gitRepo := range mgr.repos() {
 		err := gitRepo.update(mgr.reposDir())
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"gitRepo": gitRepo,
 			}).WithError(err).Error("Unable to update git repository")
+			failed = append(failed, gitRepo.Name)
 		}
 	}
+
+	if len(failed) > 0 {
+		return fmt.Errorf("The following repos failed to update: %v", failed)
+	}
+
+	return nil
 }
 
 // Ensure ...
-func (mgr Manager) Ensure() {
+func (mgr Manager) Ensure() error {
+	failed := []string{}
 	for _, repo := range mgr.repos() {
 		if repo.exists() {
 			logrus.WithField("repo", repo).Debug("Repository already exists, skipping")
 			continue
 		}
 
-		git.PlainClone(repo.path, false, &git.CloneOptions{
+		_, err := git.PlainClone(repo.path, false, &git.CloneOptions{
 			URL: repo.Config.Remotes["origin"].URLs[0],
 		})
+
+		if err != nil {
+			logrus.WithField("repo", repo.Name).WithError(err).Error("Failed to clone repository")
+		}
 	}
+
+	if len(failed) > 0 {
+		return fmt.Errorf("The following repos failed to update: %v", failed)
+	}
+
+	return nil
 }
 
 // Dump ...
-func (mgr Manager) Dump() {
+func (mgr Manager) Dump() error {
 	configFiles, err := dumpConfig()
 	if err != nil {
 		logrus.WithError(err).Error("Unable to find and save git configuration files")
@@ -77,7 +97,8 @@ func (mgr Manager) Dump() {
 		logrus.WithFields(logrus.Fields{
 			"reposDir": mgr.reposDir(),
 		}).WithError(err).Error("Unable to list repos")
-	} else {
-		file.SaveYaml(repos, mgr.config.Dotfiles, "repos")
+		return err
 	}
+
+	return file.SaveYaml(repos, mgr.config.Dotfiles, "repos")
 }

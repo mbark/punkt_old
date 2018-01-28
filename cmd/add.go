@@ -1,9 +1,9 @@
 package cmd
 
 import (
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/mbark/punkt/conf"
 	"github.com/mbark/punkt/mgr/symlink"
 )
 
@@ -22,14 +22,18 @@ func init() {
 }
 
 func add(cmd *cobra.Command, args []string) {
+	from := args[0]
 	to := ""
 	if len(args) > 1 {
 		to = args[1]
 	}
 
-	mgr := symlink.NewManager(conf.Config{
-		Dotfiles:  dotfiles,
-		PunktHome: punktHome,
-	})
-	mgr.Add(args[0], to)
+	mgr := symlink.NewManager(*config)
+	err := mgr.Add(args[0], to)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"from": from,
+			"to":   to,
+		}).WithError(err).Error("Failed to create symlink")
+	}
 }

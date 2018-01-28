@@ -1,6 +1,7 @@
 package symlink
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -96,16 +97,17 @@ func (symlink Symlink) Exists() bool {
 }
 
 // Dump ...
-func (mgr Manager) Dump() {}
+func (mgr Manager) Dump() error { return nil }
 
 // Update ...
-func (mgr Manager) Update() {}
+func (mgr Manager) Update() error { return nil }
 
 // Ensure goes through the list of symlinks ensuring they exist
-func (mgr Manager) Ensure() {
+func (mgr Manager) Ensure() error {
 	symlinks := []Symlink{}
 	file.Read(&symlinks, mgr.config.Dotfiles, "symlinks")
 
+	failed := []Symlink{}
 	for _, symlink := range symlinks {
 		s := symlink.expand()
 
@@ -115,7 +117,17 @@ func (mgr Manager) Ensure() {
 				"to":   s.To,
 			}).Debug("Symlink already exists, not creating")
 		} else {
-			s.Create()
+			err := s.Create()
+			if err != nil {
+				logrus.WithField("symlink", symlink).WithError(err).Error("Failed to create symlink")
+				failed = append(failed, symlink)
+			}
 		}
 	}
+
+	if len(failed) > 0 {
+		return fmt.Errorf("The following symlinks could not be created: %v", failed)
+	}
+
+	return nil
 }

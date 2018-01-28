@@ -4,6 +4,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/mbark/punkt/conf"
 	"github.com/mbark/punkt/mgr/symlink"
 	"github.com/mbark/punkt/run"
@@ -31,19 +33,24 @@ func (mgr Manager) bundle(args ...string) error {
 }
 
 // Dump ...
-func (mgr Manager) Dump() {
-	mgr.bundle("dump", "--force")
+func (mgr Manager) Dump() error {
+	err := mgr.bundle("dump", "--force")
+	if err != nil {
+		logrus.WithError(err).Error("Unable to run dump bundle")
+		return err
+	}
+
 	brewfile := filepath.Join(mgr.config.UserHome, ".Brewfile")
 	symlinkMgr := symlink.NewManager(mgr.config)
-	symlinkMgr.Add(brewfile, "")
+	return symlinkMgr.Add(brewfile, "")
 }
 
 // Ensure ...
-func (mgr Manager) Ensure() {
-	mgr.bundle("--no-upgrade")
+func (mgr Manager) Ensure() error {
+	return mgr.bundle("--no-upgrade")
 }
 
 // Update ...
-func (mgr Manager) Update() {
-	mgr.bundle()
+func (mgr Manager) Update() error {
+	return mgr.bundle()
 }

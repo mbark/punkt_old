@@ -10,9 +10,9 @@ import (
 
 // Manager ...
 type Manager interface {
-	Dump()
-	Ensure()
-	Update()
+	Dump() error
+	Ensure() error
+	Update() error
 }
 
 // All returns a list of all available managers
