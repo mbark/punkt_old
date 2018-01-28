@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -35,5 +37,6 @@ func add(cmd *cobra.Command, args []string) {
 			"from": from,
 			"to":   to,
 		}).WithError(err).Error("Failed to create symlink")
+		os.Exit(1)
 	}
 }
