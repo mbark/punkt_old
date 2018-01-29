@@ -1,0 +1,10 @@
+builds:
+  - binary: punkt
+    goos:
+      - windows
+      - darwin
+      - linux
+    goarch:
+      - amd64
+release:
+  prerelease: true
