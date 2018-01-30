@@ -9,7 +9,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-billy.v4"
 	"gopkg.in/src-d/go-billy.v4/memfs"
-	"gopkg.in/yaml.v2"
 
 	"github.com/mbark/punkt/conf"
 	"github.com/mbark/punkt/file"
@@ -87,18 +86,18 @@ var _ = Describe("Symlink: Add", func() {
 	It("should add the symlink to the symlinks.yml file", func() {
 		Expect(mgr.Add(testfile, "")).To(Succeed())
 
-		content, err := file.ReadAsString(fs, config.Dotfiles, "symlinks")
+		actual := []symlink.Symlink{}
+		err := file.Read(fs, &actual, config.Dotfiles, "symlinks")
 		ExpectNoErr(err)
 
-		expected, err := yaml.Marshal([]symlink.Symlink{
+		expected := []symlink.Symlink{
 			{
 				From: config.Dotfiles + "/testfile",
 				To:   testfile,
 			},
-		})
-		ExpectNoErr(err)
+		}
 
-		Expect(content).Should(MatchYAML(expected))
+		Expect(actual).Should(Equal(expected))
 	})
 })
 

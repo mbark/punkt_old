@@ -37,23 +37,3 @@ func Read(fs billy.Filesystem, out interface{}, dest, name string) error {
 
 	return nil
 }
-
-// ReadAsString the file in the given directory
-func ReadAsString(fs billy.Filesystem, dest, name string) (string, error) {
-	path := filepath.Join(dest, name+".yml")
-
-	file, err := fs.Open(path)
-	if err != nil {
-		return "", err
-	}
-
-	defer file.Close()
-
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(file)
-	if err != nil {
-		return "", err
-	}
-
-	return buf.String(), nil
-}
