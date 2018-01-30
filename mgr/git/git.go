@@ -30,7 +30,7 @@ func (mgr Manager) reposDir() string {
 
 func (mgr Manager) repos() []gitRepo {
 	repos := []gitRepo{}
-	file.Read(&repos, mgr.config.Dotfiles, "repos")
+	file.Read(mgr.config.Fs, &repos, mgr.config.Dotfiles, "repos")
 
 	return repos
 }
@@ -70,6 +70,7 @@ func (mgr Manager) Ensure() error {
 
 		if err != nil {
 			logrus.WithField("repo", repo.Name).WithError(err).Error("Failed to clone repository")
+			failed = append(failed, repo.Name)
 		}
 	}
 
@@ -100,5 +101,5 @@ func (mgr Manager) Dump() error {
 		return err
 	}
 
-	return file.SaveYaml(repos, mgr.config.Dotfiles, "repos")
+	return file.SaveYaml(mgr.config.Fs, repos, mgr.config.Dotfiles, "repos")
 }

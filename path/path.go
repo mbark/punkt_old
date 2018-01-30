@@ -7,14 +7,15 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
+	"gopkg.in/src-d/go-billy.v4"
 )
 
 // CreateNecessaryDirectories constructs the directories necessary to be able to
 // write to the file
-func CreateNecessaryDirectories(file string) error {
+func CreateNecessaryDirectories(fs billy.Filesystem, file string) error {
 	dir := filepath.Dir(file)
 	logrus.WithField("dir", dir).Debug("Creating required directories")
-	return os.MkdirAll(dir, os.ModePerm)
+	return fs.MkdirAll(dir, os.ModePerm)
 }
 
 // GetUserHome returns the user's home directory

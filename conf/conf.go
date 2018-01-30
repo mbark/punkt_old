@@ -1,32 +1,43 @@
 package conf
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"gopkg.in/src-d/go-billy.v4"
+	"gopkg.in/src-d/go-billy.v4/osfs"
 
 	"github.com/mbark/punkt/path"
 )
 
 // Config ...
 type Config struct {
-	PunktHome string
-	Dotfiles  string
-	UserHome  string
+	PunktHome  string
+	Dotfiles   string
+	UserHome   string
+	Fs         billy.Filesystem
+	WorkingDir string
 }
 
 // NewConfig builds a new configuration object from the given parameters
 func NewConfig(configFile string) *Config {
 	readConfigFile(configFile)
 	setLogLevel()
-	home := path.GetUserHome()
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		logrus.WithError(err).Fatal("Unable to determine working directory")
+	}
 
 	return &Config{
-		PunktHome: viper.GetString("punktHome"),
-		Dotfiles:  viper.GetString("dotfiles"),
-		UserHome:  home,
+		PunktHome:  viper.GetString("punktHome"),
+		Dotfiles:   viper.GetString("dotfiles"),
+		UserHome:   path.GetUserHome(),
+		Fs:         osfs.New("/"),
+		WorkingDir: cwd,
 	}
 }
 

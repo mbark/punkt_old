@@ -1,30 +1,59 @@
 package file
 
 import (
-	"io/ioutil"
+	"bytes"
 	"path/filepath"
 
 	"github.com/sirupsen/logrus"
+	"gopkg.in/src-d/go-billy.v4"
 	"gopkg.in/yaml.v2"
 )
 
 // Read the file in the given directory and marshal it to the given struct
-func Read(out interface{}, dest, name string) error {
+func Read(fs billy.Filesystem, out interface{}, dest, name string) error {
 	path := filepath.Join(dest, name+".yml")
 	logger := logrus.WithFields(logrus.Fields{
 		"file": path,
 	})
 
-	in, err := ioutil.ReadFile(path)
+	file, err := fs.Open(path)
 	if err != nil {
 		return err
 	}
 
-	err = yaml.Unmarshal(in, out)
+	defer file.Close()
+
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(file)
+	if err != nil {
+		return err
+	}
+
+	err = yaml.Unmarshal(buf.Bytes(), out)
 	if err != nil {
 		logger.WithError(err).Error("Unable to unmarshal file to yaml")
 		return err
 	}
 
 	return nil
+}
+
+// ReadAsString the file in the given directory
+func ReadAsString(fs billy.Filesystem, dest, name string) (string, error) {
+	path := filepath.Join(dest, name+".yml")
+
+	file, err := fs.Open(path)
+	if err != nil {
+		return "", err
+	}
+
+	defer file.Close()
+
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(file)
+	if err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
 }
