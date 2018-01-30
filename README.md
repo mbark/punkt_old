@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/mbark/punkt.svg?branch=master)](https://travis-ci.org/mbark/punkt) [![Go Report Card](https://goreportcard.com/badge/mbark/punkt)](https://goreportcard.com/report/mbark/punkt)
+[![Build Status](https://travis-ci.org/mbark/punkt.svg?branch=master)](https://travis-ci.org/mbark/punkt) [![Go Report Card](https://goreportcard.com/badge/mbark/punkt)](https://goreportcard.com/report/mbark/punkt) [![Coverage Status](https://coveralls.io/repos/github/mbark/punkt/badge.svg?branch=master)](https://coveralls.io/github/mbark/punkt?branch=master)
 
 # punkt
 A tool to manage your dotfiles and your environment.
