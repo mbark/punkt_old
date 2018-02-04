@@ -33,10 +33,7 @@ A list of features that I want included and their status.
   - [x] ensure
   - [x] update
 - [ ] tests
-  - [ ] cli
-    - [x] sanity checks (e.g. all commands have --help flag)
-    - [ ] add
-    - [ ] dump
-    - [ ] ensure
-    - [ ] update
+  - [ ] cli sanity check, i.e. all commands' --help flag works
   - [ ] unit tests
+    - [] add symlink
+    - [ ] etc...

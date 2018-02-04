@@ -31,13 +31,13 @@ func GetUserHome() string {
 
 // ExpandHome takes the given string and replaces occurrences of ~ with the
 // current user's home directory
-func ExpandHome(s string) string {
-	return strings.Replace(s, "~", GetUserHome(), 1)
+func ExpandHome(s string, home string) string {
+	return strings.Replace(s, "~", home, 1)
 }
 
 // UnexpandHome takes the given string and replaces the user's home with ~
 // This is useful when you want to make something home-relative, rather than
 // absolute
-func UnexpandHome(s string) string {
-	return strings.Replace(s, GetUserHome(), "~", 1)
+func UnexpandHome(s string, home string) string {
+	return strings.Replace(s, home, "~", 1)
 }

@@ -16,9 +16,9 @@ import (
 
 var (
 	logLevel   string
-	configFile = path.ExpandHome("~/.config/punkt/config")
-	punktHome  = path.ExpandHome("~/.config/punkt")
-	dotfiles   = path.ExpandHome("~/.dotfiles")
+	configFile = path.ExpandHome("~/.config/punkt/config", path.GetUserHome())
+	punktHome  = path.ExpandHome("~/.config/punkt", path.GetUserHome())
+	dotfiles   = path.ExpandHome("~/.dotfiles", path.GetUserHome())
 )
 
 var config *conf.Config

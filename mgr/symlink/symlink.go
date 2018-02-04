@@ -40,12 +40,12 @@ func NewSymlink(fs billy.Filesystem, from, to string) *Symlink {
 	}
 }
 
-func (symlink Symlink) expand() Symlink {
-	return *NewSymlink(symlink.fs, path.ExpandHome(symlink.From), path.ExpandHome(symlink.To))
+func (symlink Symlink) expand(home string) Symlink {
+	return *NewSymlink(symlink.fs, path.ExpandHome(symlink.From, home), path.ExpandHome(symlink.To, home))
 }
 
-func (symlink Symlink) unexpend() Symlink {
-	return *NewSymlink(symlink.fs, path.UnexpandHome(symlink.From), path.UnexpandHome(symlink.To))
+func (symlink Symlink) unexpend(home string) Symlink {
+	return *NewSymlink(symlink.fs, path.UnexpandHome(symlink.From, home), path.UnexpandHome(symlink.To, home))
 }
 
 // Create will construct the corresponding symlink. Returns true if the symlink
@@ -56,7 +56,7 @@ func (symlink Symlink) Create() error {
 		"from": symlink.From,
 	})
 
-	_, err := symlink.fs.Stat(symlink.From)
+	_, err := symlink.fs.Lstat(symlink.From)
 	if err != nil {
 		return err
 	}
@@ -77,9 +77,10 @@ func (symlink Symlink) Exists() bool {
 	to, _ := symlink.fs.Stat(symlink.To)
 
 	logrus.WithFields(logrus.Fields{
-		"to":   symlink.From,
-		"from": symlink.To,
+		"to":   to,
+		"from": from,
 	}).Debug("Comparing if files are the same")
+
 	return os.SameFile(from, to)
 }
 
@@ -96,7 +97,7 @@ func (mgr Manager) Ensure() error {
 
 	failed := []Symlink{}
 	for _, symlink := range symlinks {
-		s := symlink.expand()
+		s := symlink.expand(mgr.config.UserHome)
 
 		if s.Exists() {
 			logrus.WithFields(logrus.Fields{

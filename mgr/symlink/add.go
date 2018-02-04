@@ -16,7 +16,7 @@ func (mgr Manager) Add(from, to string) error {
 		return err
 	}
 
-	unexpanded := symlink.unexpend()
+	unexpanded := symlink.unexpend(mgr.config.UserHome)
 	mgr.saveSymlinks(unexpanded)
 
 	return nil
@@ -76,7 +76,7 @@ func (mgr Manager) saveSymlinks(new Symlink) error {
 	}
 
 	for _, existing := range saved {
-		if new == existing {
+		if new.From == existing.From && new.To == existing.To {
 			logrus.WithField("symlink", new).Info("Symlink already stored in file, not adding")
 			return nil
 		}

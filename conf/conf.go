@@ -46,7 +46,7 @@ func readConfigFile(configFile string) {
 		"config": configFile,
 	})
 
-	configFile = path.ExpandHome(configFile)
+	configFile = path.ExpandHome(configFile, path.GetUserHome())
 	logger.Info("Reading configuration file")
 
 	abs, err := filepath.Abs(configFile)
