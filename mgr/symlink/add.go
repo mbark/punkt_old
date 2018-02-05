@@ -1,7 +1,9 @@
 package symlink
 
 import (
+	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 
@@ -34,7 +36,18 @@ func (mgr Manager) addSymlink(from, to string) (*Symlink, error) {
 	}
 
 	if to == "" {
-		to = mgr.config.Fs.Join(mgr.config.Dotfiles, pathFromHome)
+		if strings.HasPrefix(pathFromHome, "..") {
+			to = mgr.config.Fs.Join(mgr.config.Dotfiles, from)
+		} else {
+			to = mgr.config.Fs.Join(mgr.config.Dotfiles, pathFromHome)
+		}
+
+		logrus.WithFields(logrus.Fields{
+			"from":      from,
+			"relpath":   pathFromHome,
+			"placement": to,
+		}).Info("No location for new file placement given, using default location in dotfiles directory")
+
 	}
 
 	symlink := NewSymlink(mgr.config.Fs, to, from)
@@ -46,6 +59,10 @@ func (mgr Manager) addSymlink(from, to string) (*Symlink, error) {
 	if symlink.Exists() {
 		logger.Info("Symlink already exists, not re-recreating")
 		return symlink, nil
+	}
+
+	if _, err := mgr.config.Fs.Stat(to); err == nil {
+		return nil, fmt.Errorf("File already exists where the file would be moved: %s", to)
 	}
 
 	err = path.CreateNecessaryDirectories(mgr.config.Fs, to)

@@ -2,7 +2,6 @@ package symlink
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-billy.v4"
@@ -73,15 +72,21 @@ func (symlink Symlink) Create() error {
 
 // Exists returns true if the symlink already exists
 func (symlink Symlink) Exists() bool {
-	from, _ := symlink.fs.Stat(symlink.From)
-	to, _ := symlink.fs.Stat(symlink.To)
+	if _, err := symlink.fs.Lstat(symlink.To); err != nil {
+		return false
+	}
+
+	path, err := symlink.fs.Readlink(symlink.To)
+	if err != nil {
+		return false
+	}
 
 	logrus.WithFields(logrus.Fields{
-		"to":   to,
-		"from": from,
+		"to":   path,
+		"from": symlink.From,
 	}).Debug("Comparing if files are the same")
 
-	return os.SameFile(from, to)
+	return path == symlink.From
 }
 
 // Dump ...

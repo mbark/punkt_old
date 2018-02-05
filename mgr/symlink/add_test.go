@@ -81,6 +81,13 @@ var _ = g.Describe("Symlink: Add", func() {
 		m.Expect(f).To(m.Equal(config.Dotfiles + "/testfile"))
 	})
 
+	g.It("should fail to add a file if the new location for it already exists", func() {
+		_, err := fs.Create(config.Dotfiles + "/testfile")
+		ExpectNoErr(err)
+
+		m.Expect(mgr.Add(testfile, "")).NotTo(m.Succeed())
+	})
+
 	g.Context("when reading and saving to the symlinks.yml file", func() {
 		var initial []symlink.Symlink
 		var testfileSymlink symlink.Symlink
@@ -121,9 +128,26 @@ var _ = g.Describe("Symlink: Add", func() {
 
 			m.Expect(actual).Should(m.Equal(append(initial, testfileSymlink)))
 		})
-	})
 
-	// TODO: non-home relative paths
+		g.It("should not make a non-home relative path relative to home", func() {
+			err := fs.MkdirAll("/dir", os.ModePerm)
+			ExpectNoErr(err)
+
+			_, err = fs.Create("/dir/absfile")
+			ExpectNoErr(err)
+
+			m.Expect(mgr.Add("/dir/absfile", "")).To(m.Succeed())
+
+			actual := []symlink.Symlink{}
+			err = file.Read(fs, &actual, config.Dotfiles, "symlinks")
+			ExpectNoErr(err)
+
+			m.Expect(actual).Should(m.Equal(append(initial, symlink.Symlink{
+				From: path.UnexpandHome(config.Dotfiles+"/dir/absfile", config.UserHome),
+				To:   "/dir/absfile",
+			})))
+		})
+	})
 })
 
 func ExpectNoErr(err error) {
