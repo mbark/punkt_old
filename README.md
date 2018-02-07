@@ -35,5 +35,6 @@ A list of features that I want included and their status.
 - [ ] tests
   - [ ] cli sanity check, i.e. all commands' --help flag works
   - [ ] unit tests
-    - [] add symlink
-    - [ ] etc...
+    - [x] add symlink
+    - [x] brew
+    - [ ] yarn

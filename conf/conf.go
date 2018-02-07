@@ -2,6 +2,7 @@ package conf
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -18,8 +19,9 @@ type Config struct {
 	PunktHome  string
 	Dotfiles   string
 	UserHome   string
-	Fs         billy.Filesystem
 	WorkingDir string
+	Fs         billy.Filesystem
+	Command    func(string, ...string) *exec.Cmd
 }
 
 // NewConfig builds a new configuration object from the given parameters
@@ -38,6 +40,7 @@ func NewConfig(configFile string) *Config {
 		UserHome:   path.GetUserHome(),
 		Fs:         osfs.New("/"),
 		WorkingDir: cwd,
+		Command:    exec.Command,
 	}
 }
 

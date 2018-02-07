@@ -1,7 +1,6 @@
 package brew
 
 import (
-	"os/exec"
 	"path/filepath"
 
 	"github.com/sirupsen/logrus"
@@ -27,7 +26,7 @@ func (mgr Manager) bundle(args ...string) error {
 	arguments := append([]string{"bundle"}, args...)
 	arguments = append(arguments, "--global")
 
-	cmd := exec.Command("brew", arguments...)
+	cmd := mgr.config.Command("brew", arguments...)
 	run.PrintOutputToUser(cmd)
 	return run.Run(cmd)
 }
