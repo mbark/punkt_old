@@ -22,9 +22,5 @@
 
 
 [[constraint]]
-  name = "gopkg.in/alecthomas/kingpin.v2"
-  version = "2.2.5"
-
-[[constraint]]
   branch = "v2"
   name = "gopkg.in/yaml.v2"

@@ -99,14 +99,14 @@ func fakeFailingCommand(command string, args ...string) *exec.Cmd {
 }
 
 func fakeCommand(command string, args ...string) *exec.Cmd {
-	cs := []string{"-test.run=TestHelperProcess", "--", command}
+	cs := []string{"-test.run=TestBrewHelperProcess", "--", command}
 	cs = append(cs, args...)
 	cmd := exec.Command(os.Args[0], cs...)
 	cmd.Env = []string{"GO_WANT_HELPER_PROCESS=1"}
 	return cmd
 }
 
-func TestHelperProcess(t *testing.T) {
+func TestBrewHelperProcess(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}

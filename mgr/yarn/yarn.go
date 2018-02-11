@@ -2,7 +2,6 @@ package yarn
 
 import (
 	"fmt"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -25,23 +24,26 @@ func NewManager(c conf.Config) *Manager {
 	}
 }
 
-// Dump ...
-func (mgr Manager) Dump() error {
+// ConfigFiles ...
+func (mgr Manager) ConfigFiles() []string {
 	configDir := filepath.Join(mgr.config.UserHome, ".config", "yarn", "global")
-	symlinks := []string{
+	return []string{
 		filepath.Join(configDir, "yarn.lock"),
 		filepath.Join(configDir, "package.json"),
 		filepath.Join(filepath.Join(mgr.config.UserHome, ".yarnrc")),
 	}
+}
 
+// Dump ...
+func (mgr Manager) Dump() error {
 	failed := []string{}
-	for _, s := range symlinks {
+	for _, s := range mgr.ConfigFiles() {
 		symlinkMgr := symlink.NewManager(mgr.config)
 		err := symlinkMgr.Add(s, "")
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"symlink": s,
-			}).WithError(err).Fatal("Unable to add symlink")
+			}).WithError(err).Error("Unable to add symlink")
 			failed = append(failed, s)
 		}
 	}
@@ -55,24 +57,37 @@ func (mgr Manager) Dump() error {
 
 // Ensure ...
 func (mgr Manager) Ensure() error {
-	cmd := exec.Command("yarn")
-	run.PrintOutputToUser(cmd)
-	cmd.Dir = workingDir()
+	dir, err := mgr.globalDir()
+	if err != nil {
+		return err
+	}
 
+	logrus.WithField("globalDir", dir).Debug("Yarn global dir")
+
+	cmd := mgr.config.Command("yarn")
+	cmd.Dir = dir
+	run.PrintOutputToUser(cmd)
 	return run.Run(cmd)
 }
 
-func workingDir() string {
-	cmd := exec.Command("yarn", "global", "dir")
-	stdout := run.CaptureOutput(cmd)
-	run.Run(cmd)
+func (mgr Manager) globalDir() (string, error) {
+	cmd := mgr.config.Command("yarn", "global", "dir")
+	stdout, stderr := run.CaptureOutput(cmd)
+	err := run.Run(cmd)
+	if err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"stdout": stdout.String(),
+			"stderr": stderr.String(),
+		}).Error("Unable to determine global directory for yarn")
+		return "", err
+	}
 
-	return strings.TrimSpace(stdout.String())
+	return strings.TrimSpace(stdout.String()), nil
 }
 
 // Update ...
 func (mgr Manager) Update() error {
-	cmd := exec.Command("yarn", "global", "upgrade")
+	cmd := mgr.config.Command("yarn", "global", "upgrade")
 	run.PrintOutputToUser(cmd)
 	return run.Run(cmd)
 }

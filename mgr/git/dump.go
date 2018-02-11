@@ -16,7 +16,7 @@ var fileRegexp = regexp.MustCompile(`file\:(?P<File>.*?)\s.*`)
 func dumpConfig() ([]string, error) {
 	// this is currently not suppported via the git library
 	cmd := exec.Command("git", "config", "--list", "--show-origin", "--global")
-	stdout := run.CaptureOutput(cmd)
+	stdout, _ := run.CaptureOutput(cmd)
 	err := run.Run(cmd)
 	if err != nil {
 		return []string{}, err
