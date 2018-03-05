@@ -18,7 +18,7 @@ import (
 
 func TestAdd(t *testing.T) {
 	m.RegisterFailHandler(g.Fail)
-	g.RunSpecs(t, "Symlink Suite")
+	g.RunSpecs(t, "Add Symlink Suite")
 }
 
 var _ = g.Describe("Symlink: Add", func() {

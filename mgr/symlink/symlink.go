@@ -72,6 +72,12 @@ func (symlink Symlink) Create() error {
 
 // Exists returns true if the symlink already exists
 func (symlink Symlink) Exists() bool {
+	logrus.WithFields(logrus.Fields{
+		"fs":   symlink.fs,
+		"to":   symlink.To,
+		"from": symlink.From,
+	}).Debug("Checking if symlink exists")
+
 	if _, err := symlink.fs.Lstat(symlink.To); err != nil {
 		return false
 	}
@@ -80,11 +86,6 @@ func (symlink Symlink) Exists() bool {
 	if err != nil {
 		return false
 	}
-
-	logrus.WithFields(logrus.Fields{
-		"to":   path,
-		"from": symlink.From,
-	}).Debug("Comparing if files are the same")
 
 	return path == symlink.From
 }
@@ -98,11 +99,18 @@ func (mgr Manager) Update() error { return nil }
 // Ensure goes through the list of symlinks ensuring they exist
 func (mgr Manager) Ensure() error {
 	symlinks := []Symlink{}
-	file.Read(mgr.config.Fs, &symlinks, mgr.config.Dotfiles, "symlinks")
+	err := file.Read(mgr.config.Fs, &symlinks, mgr.config.Dotfiles, "symlinks")
+	if err != nil {
+		return err
+	}
 
 	failed := []Symlink{}
 	for _, symlink := range symlinks {
-		s := symlink.expand(mgr.config.UserHome)
+		s := Symlink{
+			To:   symlink.To,
+			From: symlink.From,
+			fs:   mgr.config.Fs,
+		}.expand(mgr.config.UserHome)
 
 		if s.Exists() {
 			logrus.WithFields(logrus.Fields{

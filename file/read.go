@@ -18,6 +18,7 @@ func Read(fs billy.Filesystem, out interface{}, dest, name string) error {
 
 	file, err := fs.Open(path)
 	if err != nil {
+		logger.WithError(err).Warning("Unable to open file")
 		return err
 	}
 

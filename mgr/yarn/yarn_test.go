@@ -27,7 +27,6 @@ var _ = g.Describe("Yarn", func() {
 	var mgr mgr.Manager
 
 	g.BeforeEach(func() {
-		// logrus.SetLevel(logrus.DebugLevel)
 		config = &conf.Config{
 			UserHome:   "/home",
 			PunktHome:  "/home/.config/punkt",
