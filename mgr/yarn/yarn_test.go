@@ -8,6 +8,7 @@ import (
 
 	g "github.com/onsi/ginkgo"
 	m "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-billy.v4/memfs"
 
 	"io/ioutil"
@@ -27,6 +28,7 @@ var _ = g.Describe("Yarn", func() {
 	var mgr mgr.Manager
 
 	g.BeforeEach(func() {
+		logrus.SetLevel(logrus.PanicLevel)
 		config = &conf.Config{
 			UserHome:   "/home",
 			PunktHome:  "/home/.config/punkt",
@@ -149,7 +151,6 @@ func TestYarnHelperProcess(t *testing.T) {
 			fmt.Fprintf(os.Stderr, "unexpected flag/command provided: %v", args)
 			os.Exit(2)
 		}
-	case "":
 	default:
 		fmt.Fprintf(os.Stderr, "unexpected flag/command provided: %v", args)
 		os.Exit(1)

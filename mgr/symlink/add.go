@@ -19,9 +19,7 @@ func (mgr Manager) Add(from, to string) error {
 	}
 
 	unexpanded := symlink.unexpend(mgr.config.UserHome)
-	mgr.saveSymlinks(unexpanded)
-
-	return nil
+	return mgr.saveSymlinks(unexpanded)
 }
 
 func (mgr Manager) addSymlink(from, to string) (*Symlink, error) {
@@ -89,12 +87,13 @@ func (mgr Manager) saveSymlinks(new Symlink) error {
 	// that we can just continue and then overwrite the bad file
 	err := file.Read(mgr.config.Fs, &saved, mgr.config.Dotfiles, "symlinks")
 	if err != nil {
-		logrus.WithField("symlink", new).Warning("Unable to read file containing all symlinks, assuming non exists")
+		logrus.WithError(err).WithField("symlink", new).Warning("Unable to read file containing all symlinks, assuming non exists")
 	}
 
 	for _, existing := range saved {
 		if new.From == existing.From && new.To == existing.To {
 			logrus.WithField("symlink", new).Info("Symlink already stored in file, not adding")
+			// TODO: this is clearly a bug, add test and fix
 			return nil
 		}
 	}

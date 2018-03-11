@@ -1,26 +1,32 @@
 package git
 
 import (
-	"io/ioutil"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/mbark/punkt/run"
+	"github.com/sirupsen/logrus"
 )
 
 var fileRegexp = regexp.MustCompile(`file\:(?P<File>.*?)\s.*`)
 
-func dumpConfig() ([]string, error) {
+func (mgr Manager) dumpConfig() ([]string, error) {
 	// this is currently not suppported via the git library
-	cmd := exec.Command("git", "config", "--list", "--show-origin", "--global")
-	stdout, _ := run.CaptureOutput(cmd)
+	cmd := mgr.config.Command("git", "config", "--list", "--show-origin", "--global")
+	stdout, stderr := run.CaptureOutput(cmd)
 	err := run.Run(cmd)
 	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"stdout": stdout.String(),
+			"stderr": stderr.String(),
+		}).WithError(err).Error("Failed to run git config")
 		return []string{}, err
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"stdout": stdout.String(),
+	}).Debug("Got git config list successfully")
 
 	output := strings.TrimSpace(stdout.String())
 	rows := strings.Split(output, "\n")
@@ -42,11 +48,21 @@ func dumpConfig() ([]string, error) {
 	return files, nil
 }
 
-func dumpRepos(reposDir string) ([]gitRepo, error) {
-	files, err := ioutil.ReadDir(reposDir)
-	repos := []gitRepo{}
+func (mgr Manager) dumpRepos() ([]Repo, error) {
+	repos := []Repo{}
+
+	workingdir, err := mgr.config.Fs.Chroot(mgr.reposDir)
+	if err != nil {
+		return repos, nil
+	}
+
+	files, err := workingdir.ReadDir("./")
+	logrus.WithFields(logrus.Fields{
+		"files": files,
+	}).Debug("Found the following files in the repos directory")
 
 	if err != nil {
+		logrus.WithError(err).Warning("Unable to read repos directory")
 		return repos, err
 	}
 
@@ -55,13 +71,24 @@ func dumpRepos(reposDir string) ([]gitRepo, error) {
 			continue
 		}
 
-		repo, err := newGitRepo(filepath.Join(reposDir, file.Name()), "")
+		worktree, err := workingdir.Chroot(file.Name())
 		if err != nil {
+			return repos, nil
+		}
+
+		repo, err := NewRepo(worktree, "")
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"repo": worktree,
+			}).WithError(err).Warning("Unable to open git repository")
 			return repos, err
 		}
 
 		repos = append(repos, *repo)
 	}
 
+	logrus.WithFields(logrus.Fields{
+		"repos": repos,
+	}).Debug("Found git repos to save")
 	return repos, nil
 }

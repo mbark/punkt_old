@@ -10,27 +10,27 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/storage/filesystem"
 )
 
 // Manager ...
 type Manager struct {
-	config conf.Config
+	config   conf.Config
+	reposDir string
 }
 
 // NewManager ...
 func NewManager(c conf.Config) *Manager {
 	return &Manager{
-		config: c,
+		config:   c,
+		reposDir: filepath.Join(c.PunktHome, "repos"),
 	}
 }
 
-func (mgr Manager) reposDir() string {
-	return filepath.Join(mgr.config.PunktHome, "repos")
-}
-
-func (mgr Manager) repos() []gitRepo {
-	repos := []gitRepo{}
-	file.Read(mgr.config.Fs, &repos, mgr.config.Dotfiles, "repos")
+func (mgr Manager) repos() []Repo {
+	repos := []Repo{}
+	err := file.Read(mgr.config.Fs, &repos, mgr.config.Dotfiles, "repos")
+	logrus.WithError(err).Warning("Unable to open repos.yml config file")
 
 	return repos
 }
@@ -38,13 +38,13 @@ func (mgr Manager) repos() []gitRepo {
 // Update ...
 func (mgr Manager) Update() error {
 	failed := []string{}
-	for _, gitRepo := range mgr.repos() {
-		err := gitRepo.update(mgr.reposDir())
+	for _, repo := range mgr.repos() {
+		err := repo.update(mgr.reposDir)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
-				"gitRepo": gitRepo,
+				"repo": repo,
 			}).WithError(err).Error("Unable to update git repository")
-			failed = append(failed, gitRepo.Name)
+			failed = append(failed, repo.Name)
 		}
 	}
 
@@ -64,7 +64,16 @@ func (mgr Manager) Ensure() error {
 			continue
 		}
 
-		_, err := git.PlainClone(repo.path, false, &git.CloneOptions{
+		storer, err := filesystem.NewStorage(mgr.config.Fs)
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"repo": repo.Name,
+			}).WithError(err).Error("Unable to create storage for repo")
+			failed = append(failed, repo.Name)
+			continue
+		}
+
+		_, err = git.Clone(storer, repo.worktree, &git.CloneOptions{
 			URL: repo.Config.Remotes["origin"].URLs[0],
 		})
 
@@ -83,20 +92,26 @@ func (mgr Manager) Ensure() error {
 
 // Dump ...
 func (mgr Manager) Dump() error {
-	configFiles, err := dumpConfig()
+	configFiles, err := mgr.dumpConfig()
 	if err != nil {
 		logrus.WithError(err).Error("Unable to find and save git configuration files")
+		return err
 	}
 
 	symlinkMgr := symlink.NewManager(mgr.config)
 	for _, f := range configFiles {
-		symlinkMgr.Add(f, "")
+		err := symlinkMgr.Add(f, "")
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"configFile": f,
+			}).WithError(err).Warning("Unable to symlink git config file")
+		}
 	}
 
-	repos, err := dumpRepos(mgr.reposDir())
+	repos, err := mgr.dumpRepos()
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
-			"reposDir": mgr.reposDir(),
+			"reposDir": mgr.reposDir,
 		}).WithError(err).Error("Unable to list repos")
 		return err
 	}

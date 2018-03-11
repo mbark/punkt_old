@@ -9,8 +9,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Read the file in the given directory and marshal it to the given struct
-func Read(fs billy.Filesystem, out interface{}, dest, name string) error {
+func open(fs billy.Filesystem, dest, name string) (*bytes.Buffer, error) {
 	path := filepath.Join(dest, name+".yml")
 	logger := logrus.WithFields(logrus.Fields{
 		"file": path,
@@ -19,7 +18,7 @@ func Read(fs billy.Filesystem, out interface{}, dest, name string) error {
 	file, err := fs.Open(path)
 	if err != nil {
 		logger.WithError(err).Warning("Unable to open file")
-		return err
+		return nil, err
 	}
 
 	defer file.Close()
@@ -27,14 +26,36 @@ func Read(fs billy.Filesystem, out interface{}, dest, name string) error {
 	buf := new(bytes.Buffer)
 	_, err = buf.ReadFrom(file)
 	if err != nil {
+		return nil, err
+	}
+
+	return buf, nil
+}
+
+// Read the file in the given directory and marshal it to the given struct
+func Read(fs billy.Filesystem, out interface{}, dest, name string) error {
+	buf, err := open(fs, dest, name)
+	if err != nil {
 		return err
 	}
 
 	err = yaml.Unmarshal(buf.Bytes(), out)
 	if err != nil {
-		logger.WithError(err).Error("Unable to unmarshal file to yaml")
+		logrus.WithFields(logrus.Fields{
+			"dir":  dest,
+			"name": name,
+		}).WithError(err).Error("Unable to unmarshal file to yaml")
 		return err
 	}
 
 	return nil
+}
+
+// ReadAsString reads the given file and returns it's entire contents as string
+func ReadAsString(fs billy.Filesystem, dest, name string) (string, error) {
+	buf, err := open(fs, dest, name)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }

@@ -6,19 +6,29 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
+	billy "gopkg.in/src-d/go-billy.v4"
 	"gopkg.in/src-d/go-git.v4"
 	gitconf "gopkg.in/src-d/go-git.v4/config"
+	"gopkg.in/src-d/go-git.v4/storage/filesystem"
+	"gopkg.in/src-d/go-git.v4/storage/memory"
 )
 
-// GitRepo ...
-type gitRepo struct {
-	Name   string
-	Config gitconf.Config
-	path   string
+// Repo describes a git repository
+type Repo struct {
+	Name     string
+	Config   gitconf.Config
+	worktree billy.Filesystem
 }
 
-func newGitRepo(path, name string) (*gitRepo, error) {
-	repo, err := git.PlainOpen(path)
+// NewRepo opens the repository at the given worktree with a filesytem storage as
+// backup.
+func NewRepo(worktree billy.Filesystem, name string) (*Repo, error) {
+	s, err := filesystem.NewStorage(worktree)
+	if err != nil {
+		return nil, err
+	}
+
+	repo, err := git.Open(s, worktree)
 	if repo == nil {
 		return nil, err
 	}
@@ -35,10 +45,10 @@ func newGitRepo(path, name string) (*gitRepo, error) {
 		}
 	}
 
-	return &gitRepo{
-		Name:   name,
-		Config: *config,
-		path:   path,
+	return &Repo{
+		Name:     name,
+		Config:   *config,
+		worktree: worktree,
 	}, nil
 }
 
@@ -65,8 +75,8 @@ func repoName(repo gitconf.Config) (string, error) {
 	return s[len(s)-1], nil
 }
 
-func (repo gitRepo) exists() bool {
-	r, err := git.PlainOpen(repo.path)
+func (repo Repo) exists() bool {
+	r, err := git.Open(memory.NewStorage(), repo.worktree)
 	if err == git.ErrRepositoryNotExists {
 		return false
 	}
@@ -78,7 +88,8 @@ func (repo gitRepo) exists() bool {
 	return false
 }
 
-func (repo gitRepo) update(reposDir string) error {
+func (repo Repo) update(reposDir string) error {
+	// TODO: change to Open with storer and billy.Filesystem
 	r, err := git.PlainOpen(filepath.Join(reposDir, repo.Name))
 	if err != nil {
 		return err
