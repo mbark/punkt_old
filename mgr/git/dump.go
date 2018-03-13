@@ -2,6 +2,7 @@ package git
 
 import (
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -76,7 +77,7 @@ func (mgr Manager) dumpRepos() ([]Repo, error) {
 			return repos, nil
 		}
 
-		repo, err := NewRepo(worktree, "")
+		repo, err := NewRepo(worktree, filepath.Base(file.Name()))
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"repo": worktree,

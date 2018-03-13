@@ -30,7 +30,22 @@ func NewManager(c conf.Config) *Manager {
 func (mgr Manager) repos() []Repo {
 	repos := []Repo{}
 	err := file.Read(mgr.config.Fs, &repos, mgr.config.Dotfiles, "repos")
-	logrus.WithError(err).Warning("Unable to open repos.yml config file")
+	if err != nil {
+		logrus.WithError(err).Warning("Unable to open repos.yml config file")
+	}
+
+	for idx := range repos {
+		repo := &repos[idx]
+		worktree, err := mgr.config.Fs.Chroot(mgr.config.PunktHome + "/repos/" + repo.Name)
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"repo": repo.Name,
+			}).WithError(err).Error("Failed to chroot for repository")
+			return []Repo{}
+		}
+
+		repo.worktree = worktree
+	}
 
 	return repos
 }
@@ -58,27 +73,41 @@ func (mgr Manager) Update() error {
 // Ensure ...
 func (mgr Manager) Ensure() error {
 	failed := []string{}
+
+	repos := mgr.repos()
+	logrus.WithField("repos", repos).Debug("Running ensure for these repos")
+
 	for _, repo := range mgr.repos() {
+		logger := logrus.WithField("repo", repo.Name)
+
 		if repo.exists() {
 			logrus.WithField("repo", repo).Debug("Repository already exists, skipping")
 			continue
 		}
 
-		storer, err := filesystem.NewStorage(mgr.config.Fs)
+		// TODO: resolve how to use storer vs worktree (what do they mean?)
+		dir, err := mgr.config.Fs.Chroot(mgr.reposDir + repo.Name)
 		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"repo": repo.Name,
-			}).WithError(err).Error("Unable to create storage for repo")
+			logger.WithError(err).Error("Failed to chroot to repo directory")
 			failed = append(failed, repo.Name)
 			continue
 		}
 
+		storer, err := filesystem.NewStorage(dir)
+		if err != nil {
+			logger.WithError(err).Error("Unable to create storage for repo")
+			failed = append(failed, repo.Name)
+			continue
+		}
+
+		remote := repo.Config.Remotes["origin"].URLs[0]
+		logger.WithField("remote", remote).Debug("Cloning repository from remote")
 		_, err = git.Clone(storer, repo.worktree, &git.CloneOptions{
-			URL: repo.Config.Remotes["origin"].URLs[0],
+			URL: remote,
 		})
 
 		if err != nil {
-			logrus.WithField("repo", repo.Name).WithError(err).Error("Failed to clone repository")
+			logger.WithError(err).Error("Failed to clone repository")
 			failed = append(failed, repo.Name)
 		}
 	}

@@ -2,16 +2,22 @@ package git_test
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
+	// . "github.com/Benjamintf1/Expanded-Unmarshalled-Matchers"
 	g "github.com/onsi/ginkgo"
 	m "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-billy.v4/memfs"
+	"gopkg.in/src-d/go-billy.v4/osfs"
+	"gopkg.in/src-d/go-billy.v4/util"
 	goGit "gopkg.in/src-d/go-git.v4"
 	goConfig "gopkg.in/src-d/go-git.v4/config"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	goStorage "gopkg.in/src-d/go-git.v4/storage/filesystem"
 	yaml "gopkg.in/yaml.v2"
 
@@ -62,10 +68,10 @@ var _ = g.Describe("Git: Manager", func() {
 			m.Expect(err).To(m.BeNil())
 
 			expected := []symlink.Symlink{
-				*symlink.NewSymlink(nil, "~/.dotfiles/.gitconfig", "~/.gitconfig"),
-				*symlink.NewSymlink(nil, "~/.dotfiles/.config/git/config", "~/.config/git/config"),
+				*symlink.NewSymlink(config.Fs, "~/.dotfiles/.gitconfig", "~/.gitconfig"),
+				*symlink.NewSymlink(config.Fs, "~/.dotfiles/.config/git/config", "~/.config/git/config"),
 			}
-			m.Expect(err).To(m.BeNil())
+			unmarshalAndMarshal(&expected)
 
 			m.Expect(mgr.Dump()).To(m.Succeed())
 
@@ -73,30 +79,81 @@ var _ = g.Describe("Git: Manager", func() {
 			err = file.Read(config.Fs, &actual, config.Dotfiles, "symlinks")
 			m.Expect(err).To(m.BeNil())
 
-			// Due to the fact that symlinks are stored in an array and array
-			// order isn't relevant we have to use this comparison check instead
-			// of MatchYAML
-			m.Expect(actual).Should(m.ConsistOf(expected[0], expected[1]))
+			m.Expect(actual).Should(m.ConsistOf(expected))
 		})
 
 		g.It("should dump the repos cloned in the repos directory", func() {
-			expected, err := yaml.Marshal([]git.Repo{
-				*addGitRepo(config, "repo1"),
-				*addGitRepo(config, "repo2"),
-			})
-			m.Expect(err).To(m.BeNil())
+			expected := []git.Repo{
+				*addGitRepo(config, "repo1", nil),
+				*addGitRepo(config, "repo2", nil),
+			}
+
+			unmarshalAndMarshal(&expected)
 			m.Expect(mgr.Dump()).To(m.Succeed())
 
-			actual, err := file.ReadAsString(config.Fs, config.Dotfiles, "repos")
+			actual := []git.Repo{}
+			err := file.Read(config.Fs, &actual, config.Dotfiles, "repos")
 			m.Expect(err).To(m.BeNil())
-			m.Expect(actual).Should(m.MatchYAML(expected))
+			m.Expect(actual).Should(m.ConsistOf(expected))
 		})
 	})
 
-	g.It("should succeed when running Ensure without yaml file", func() {
-		m.Expect(mgr.Ensure()).To(m.Succeed())
-	})
+	var _ = g.Context("when running Ensure", func() {
+		var tmpDir string
+		g.BeforeEach(func() {
+			var err error
+			tmpDir, err = ioutil.TempDir("", "git-ensure")
+			m.Expect(err).To(m.BeNil())
+			fs := osfs.New(tmpDir)
 
+			config = &conf.Config{
+				UserHome:   "/home",
+				PunktHome:  "/home/.config/punkt",
+				Dotfiles:   "/home/.dotfiles",
+				Fs:         fs,
+				WorkingDir: "/home",
+				Command:    fakeCommand,
+			}
+
+			mgr = git.NewManager(*config)
+		})
+
+		g.AfterEach(func() {
+			os.RemoveAll(tmpDir)
+		})
+
+		g.It("should succeed when no repos file exists", func() {
+			m.Expect(mgr.Ensure()).To(m.Succeed())
+		})
+
+		g.It("should do nothing if the repo already exists", func() {
+			addGitRepo(config, "repo", nil)
+			m.Expect(mgr.Dump()).To(m.Succeed())
+
+			m.Expect(mgr.Ensure()).To(m.Succeed())
+		})
+
+		g.It("should clone the repositories specified", func() {
+			addGitRepo(config, "cloneMe", &cloneConfig{
+				dest:    config.UserHome,
+				remotes: []string{"url"},
+			})
+
+			dest := config.PunktHome + "/repos/"
+			addGitRepo(config, "repo", &cloneConfig{
+				remotes: []string{tmpDir + config.UserHome + "/cloneMe"},
+				dest:    dest,
+			})
+			m.Expect(mgr.Dump()).To(m.Succeed())
+			err := util.RemoveAll(config.Fs, dest+"repo")
+			m.Expect(err).To(m.BeNil())
+
+			m.Expect(mgr.Ensure()).To(m.Succeed())
+
+			_, err = config.Fs.ReadDir(config.PunktHome + "/repos/repo")
+			m.Expect(err).To(m.BeNil())
+		})
+	})
 })
 
 func fakeWithEnvCommand(env string) func(string, ...string) *exec.Cmd {
@@ -151,7 +208,7 @@ func TestGitHelperProcess(t *testing.T) {
 			fmt.Println(``)
 		}
 
-		return
+		os.Exit(0)
 	default:
 		fmt.Fprintf(os.Stderr, "non-brew command called\n")
 		os.Exit(1)
@@ -166,23 +223,59 @@ file:/home/.gitconfig           user.name=User Name
 file:/home/.config/git/config   push.default=simple
 `
 
-func addGitRepo(config *conf.Config, name string) *git.Repo {
-	dir, err := config.Fs.Chroot(config.PunktHome + "/repos/" + name)
+type cloneConfig struct {
+	dest    string
+	remotes []string
+}
+
+func addGitRepo(config *conf.Config, name string, cloneConf *cloneConfig) *git.Repo {
+	if cloneConf == nil {
+		cloneConf = &cloneConfig{
+			dest:    config.PunktHome + "/repos",
+			remotes: []string{"/some/path/" + name},
+		}
+	}
+
+	dir, err := config.Fs.Chroot(cloneConf.dest + "/" + name)
 	m.Expect(err).To(m.BeNil())
+
 	storage, err := goStorage.NewStorage(dir)
 	m.Expect(err).To(m.BeNil())
 	repo, err := goGit.Init(storage, dir)
 	m.Expect(err).To(m.BeNil())
+
 	_, err = repo.CreateRemote(&goConfig.RemoteConfig{
 		Name:  "origin",
 		Fetch: []goConfig.RefSpec{},
-		URLs:  []string{"url"},
+		URLs:  cloneConf.remotes,
 	})
 	m.Expect(err).To(m.BeNil())
 
-	fs, err := config.Fs.Chroot(config.PunktHome + "/repos/" + name)
+	w, err := repo.Worktree()
 	m.Expect(err).To(m.BeNil())
-	gitRepo, err := git.NewRepo(fs, "")
+
+	f, err := dir.Create("afile")
+	m.Expect(err).To(m.BeNil())
+	_, err = w.Add(f.Name())
+	m.Expect(err).To(m.BeNil())
+
+	_, err = w.Commit("A commit", &goGit.CommitOptions{
+		Author: &object.Signature{
+			Name:  "John Doe",
+			Email: "john@doe.org",
+			When:  time.Now(),
+		},
+	})
+	m.Expect(err).To(m.BeNil())
+
+	gitRepo, err := git.NewRepo(dir, name)
 	m.Expect(err).To(m.BeNil())
 	return gitRepo
+}
+
+func unmarshalAndMarshal(out interface{}) {
+	marshalled, err := yaml.Marshal(out)
+	m.Expect(err).To(m.BeNil())
+	err = yaml.Unmarshal(marshalled, out)
+	m.Expect(err).To(m.BeNil())
 }

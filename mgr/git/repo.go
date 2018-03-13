@@ -10,7 +10,6 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 	gitconf "gopkg.in/src-d/go-git.v4/config"
 	"gopkg.in/src-d/go-git.v4/storage/filesystem"
-	"gopkg.in/src-d/go-git.v4/storage/memory"
 )
 
 // Repo describes a git repository
@@ -76,7 +75,20 @@ func repoName(repo gitconf.Config) (string, error) {
 }
 
 func (repo Repo) exists() bool {
-	r, err := git.Open(memory.NewStorage(), repo.worktree)
+	logger := logrus.WithFields(logrus.Fields{
+		"repo":     repo.Name,
+		"worktree": repo.worktree,
+	})
+	logger.Debug("Checking if repo exists")
+
+	s, err := filesystem.NewStorage(repo.worktree)
+	if err != nil {
+		logger.WithError(err).Error("Failed to create new storage for repository worktree")
+		return false
+	}
+
+	r, err := git.Open(s, repo.worktree)
+
 	if err == git.ErrRepositoryNotExists {
 		return false
 	}
