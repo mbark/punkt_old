@@ -80,7 +80,7 @@ func (mgr Manager) dumpRepos() ([]Repo, error) {
 		repo, err := NewRepo(worktree, filepath.Base(file.Name()))
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
-				"repo": worktree,
+				"repo": worktree.Root(),
 			}).WithError(err).Warning("Unable to open git repository")
 			return repos, err
 		}

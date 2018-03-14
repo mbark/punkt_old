@@ -54,7 +54,7 @@ func (mgr Manager) repos() []Repo {
 func (mgr Manager) Update() error {
 	failed := []string{}
 	for _, repo := range mgr.repos() {
-		err := repo.update(mgr.reposDir)
+		err := repo.Update(mgr.reposDir)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"repo": repo,
@@ -80,12 +80,11 @@ func (mgr Manager) Ensure() error {
 	for _, repo := range mgr.repos() {
 		logger := logrus.WithField("repo", repo.Name)
 
-		if repo.exists() {
+		if repo.Exists() {
 			logrus.WithField("repo", repo).Debug("Repository already exists, skipping")
 			continue
 		}
 
-		// TODO: resolve how to use storer vs worktree (what do they mean?)
 		dir, err := mgr.config.Fs.Chroot(mgr.reposDir + repo.Name)
 		if err != nil {
 			logger.WithError(err).Error("Failed to chroot to repo directory")
@@ -134,6 +133,7 @@ func (mgr Manager) Dump() error {
 			logrus.WithFields(logrus.Fields{
 				"configFile": f,
 			}).WithError(err).Warning("Unable to symlink git config file")
+			return err
 		}
 	}
 

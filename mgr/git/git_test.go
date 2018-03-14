@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	// . "github.com/Benjamintf1/Expanded-Unmarshalled-Matchers"
 	g "github.com/onsi/ginkgo"
 	m "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
@@ -82,6 +81,18 @@ var _ = g.Describe("Git: Manager", func() {
 			m.Expect(actual).Should(m.ConsistOf(expected))
 		})
 
+		g.It("should fail if some symlink can't be created", func() {
+			config.Command = fakeWithEnvCommand("WITH_GITCONFIG=true")
+			mgr = git.NewManager(*config)
+
+			m.Expect(mgr.Dump()).NotTo(m.Succeed())
+
+			actual := []symlink.Symlink{}
+			err := file.Read(config.Fs, &actual, config.Dotfiles, "symlinks")
+			m.Expect(err).NotTo(m.BeNil())
+			m.Expect(actual).To(m.Equal([]symlink.Symlink{}))
+		})
+
 		g.It("should dump the repos cloned in the repos directory", func() {
 			expected := []git.Repo{
 				*addGitRepo(config, "repo1", nil),
@@ -96,6 +107,23 @@ var _ = g.Describe("Git: Manager", func() {
 			m.Expect(err).To(m.BeNil())
 			m.Expect(actual).Should(m.ConsistOf(expected))
 		})
+
+		g.It("should fail if the repos directory contains non-git repos", func() {
+			err := config.Fs.MkdirAll(config.PunktHome+"/repos/notGit", os.ModePerm)
+			m.Expect(err).To(m.BeNil())
+			m.Expect(mgr.Dump()).NotTo(m.Succeed())
+		})
+
+		g.It("should ignore non-directories in the repos directory", func() {
+			_, err := config.Fs.Create(config.PunktHome + "/repos/file")
+			m.Expect(err).To(m.BeNil())
+			m.Expect(mgr.Dump()).To(m.Succeed())
+
+			actual := []git.Repo{}
+			err = file.Read(config.Fs, &actual, config.Dotfiles, "repos")
+			m.Expect(err).To(m.BeNil())
+			m.Expect(actual).Should(m.ConsistOf([]git.Repo{}))
+		})
 	})
 
 	var _ = g.Context("when running Ensure", func() {
@@ -104,16 +132,7 @@ var _ = g.Describe("Git: Manager", func() {
 			var err error
 			tmpDir, err = ioutil.TempDir("", "git-ensure")
 			m.Expect(err).To(m.BeNil())
-			fs := osfs.New(tmpDir)
-
-			config = &conf.Config{
-				UserHome:   "/home",
-				PunktHome:  "/home/.config/punkt",
-				Dotfiles:   "/home/.dotfiles",
-				Fs:         fs,
-				WorkingDir: "/home",
-				Command:    fakeCommand,
-			}
+			config.Fs = osfs.New(tmpDir)
 
 			mgr = git.NewManager(*config)
 		})
@@ -152,6 +171,16 @@ var _ = g.Describe("Git: Manager", func() {
 
 			_, err = config.Fs.ReadDir(config.PunktHome + "/repos/repo")
 			m.Expect(err).To(m.BeNil())
+		})
+
+		g.It("should fail if some repo can't be cloned", func() {
+			dest := config.PunktHome + "/repos/"
+			addGitRepo(config, "repo", nil)
+			m.Expect(mgr.Dump()).To(m.Succeed())
+			err := util.RemoveAll(config.Fs, dest+"repo")
+			m.Expect(err).To(m.BeNil())
+
+			m.Expect(mgr.Ensure()).NotTo(m.Succeed())
 		})
 	})
 })

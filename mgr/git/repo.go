@@ -1,7 +1,6 @@
 package git
 
 import (
-	"errors"
 	"path/filepath"
 	"strings"
 
@@ -38,9 +37,9 @@ func NewRepo(worktree billy.Filesystem, name string) (*Repo, error) {
 	}
 
 	if name == "" {
-		name, err = repoName(*config)
-		if err != nil {
-			return nil, err
+		name = nameFromRemote(*config)
+		if name == "" {
+			name = filepath.Base(worktree.Root())
 		}
 	}
 
@@ -51,30 +50,23 @@ func NewRepo(worktree billy.Filesystem, name string) (*Repo, error) {
 	}, nil
 }
 
-func repoName(repo gitconf.Config) (string, error) {
+func nameFromRemote(repo gitconf.Config) string {
 	remote := repo.Remotes[git.DefaultRemoteName]
 	if remote == nil {
 		logrus.WithFields(logrus.Fields{
 			"repo":    repo,
 			"default": git.DefaultRemoteName,
-		}).Warning("git repository doesn't have default remote name")
-
-		if len(repo.Remotes) == 0 {
-			return "", errors.New("git repository has no remotes")
-		}
-
-		for _, r := range repo.Remotes {
-			remote = r
-			break
-		}
+		}).Debug("git repository doesn't have default remote")
+		return ""
 
 	}
 
 	s := strings.Split(remote.URLs[0], "/")
-	return s[len(s)-1], nil
+	return s[len(s)-1]
 }
 
-func (repo Repo) exists() bool {
+// Exists ...
+func (repo Repo) Exists() bool {
 	logger := logrus.WithFields(logrus.Fields{
 		"repo":     repo.Name,
 		"worktree": repo.worktree,
@@ -100,7 +92,8 @@ func (repo Repo) exists() bool {
 	return false
 }
 
-func (repo Repo) update(reposDir string) error {
+// Update ...
+func (repo Repo) Update(reposDir string) error {
 	// TODO: change to Open with storer and billy.Filesystem
 	r, err := git.PlainOpen(filepath.Join(reposDir, repo.Name))
 	if err != nil {
