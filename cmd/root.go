@@ -54,7 +54,7 @@ func init() {
 }
 
 func initConfig() {
-	config = conf.NewConfig(configFile)
+	config = conf.NewConfig(path.ExpandHome(configFile, path.GetUserHome()))
 	logrus.WithField("config", config).Debug("Creating managers with the given config")
 	managers = mgr.All(*config)
 }

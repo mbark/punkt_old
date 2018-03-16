@@ -40,7 +40,7 @@ func (mgr Manager) repos() []Repo {
 func (mgr Manager) Update() error {
 	failed := []string{}
 	for _, repo := range mgr.repos() {
-		worktree, err := mgr.openRepo(repo)
+		worktree, err := mgr.getWorktree(repo)
 		if err != nil {
 			failed = append(failed, repo.Name)
 			continue
@@ -78,7 +78,12 @@ func (mgr Manager) Ensure() error {
 	for _, repo := range mgr.repos() {
 		logger := logrus.WithField("repo", repo.Name)
 
-		worktree, err := mgr.openRepo(repo)
+		worktree, err := mgr.getWorktree(repo)
+		if err != nil {
+			failed = append(failed, repo.Name)
+			continue
+		}
+
 		if err = repo.Open(worktree); err == nil {
 			logrus.WithField("repo", repo).Debug("Repository already exists, skipping")
 			continue
@@ -98,7 +103,7 @@ func (mgr Manager) Ensure() error {
 	return nil
 }
 
-func (mgr Manager) openRepo(repo Repo) (billy.Filesystem, error) {
+func (mgr Manager) getWorktree(repo Repo) (billy.Filesystem, error) {
 	worktree, err := mgr.config.Fs.Chroot(filepath.Join(mgr.reposDir, repo.Name))
 	if err != nil {
 		logrus.WithField("repo", repo.Name).WithError(err).Error("Failed to chroot to repo directory")

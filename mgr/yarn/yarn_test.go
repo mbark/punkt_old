@@ -2,6 +2,7 @@ package yarn_test
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"testing"
@@ -10,8 +11,6 @@ import (
 	m "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-billy.v4/memfs"
-
-	"io/ioutil"
 
 	"github.com/mbark/punkt/conf"
 	"github.com/mbark/punkt/mgr"

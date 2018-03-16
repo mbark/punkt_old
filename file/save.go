@@ -11,7 +11,7 @@ import (
 )
 
 // SaveYaml the given interface to the given directory with the specified name,
-// the suffix is added by defautl
+// the suffix is added by default
 func SaveYaml(fs billy.Filesystem, content interface{}, dest, name string) error {
 	out, err := yaml.Marshal(&content)
 	if err != nil {

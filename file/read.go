@@ -50,12 +50,3 @@ func Read(fs billy.Filesystem, out interface{}, dest, name string) error {
 
 	return nil
 }
-
-// ReadAsString reads the given file and returns it's entire contents as string
-func ReadAsString(fs billy.Filesystem, dest, name string) (string, error) {
-	buf, err := open(fs, dest, name)
-	if err != nil {
-		return "", err
-	}
-	return buf.String(), nil
-}
