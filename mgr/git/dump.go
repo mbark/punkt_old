@@ -77,7 +77,7 @@ func (mgr Manager) dumpRepos() ([]Repo, error) {
 			return repos, nil
 		}
 
-		repo, err := NewRepo(worktree, filepath.Base(file.Name()))
+		repo, err := OpenRepo(worktree, filepath.Base(file.Name()))
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"repo": worktree.Root(),

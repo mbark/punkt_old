@@ -13,29 +13,47 @@ import (
 
 // Repo describes a git repository
 type Repo struct {
-	Name     string
-	Config   gitconf.Config
-	worktree billy.Filesystem
+	Name       string
+	Config     *gitconf.Config
+	repository *git.Repository
 }
 
 // NewRepo opens the repository at the given worktree with a filesytem storage as
-// backup.
-func NewRepo(worktree billy.Filesystem, name string) (*Repo, error) {
+// a backing storage.
+func NewRepo(name string) *Repo {
+	return &Repo{
+		Name:       name,
+		Config:     nil,
+		repository: nil,
+	}
+}
+
+// OpenRepo is a convience method to create a new repo and open it.
+func OpenRepo(worktree billy.Filesystem, name string) (*Repo, error) {
+	repo := NewRepo(name)
+	err := repo.Open(worktree)
+
+	return repo, err
+}
+
+// Open ...
+func (repo *Repo) Open(worktree billy.Filesystem) error {
 	s, err := filesystem.NewStorage(worktree)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	repo, err := git.Open(s, worktree)
-	if repo == nil {
-		return nil, err
-	}
-
-	config, err := repo.Config()
+	repository, err := git.Open(s, worktree)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
+	config, err := repository.Config()
+	if err != nil {
+		return err
+	}
+
+	name := repo.Name
 	if name == "" {
 		name = nameFromRemote(*config)
 		if name == "" {
@@ -43,11 +61,10 @@ func NewRepo(worktree billy.Filesystem, name string) (*Repo, error) {
 		}
 	}
 
-	return &Repo{
-		Name:     name,
-		Config:   *config,
-		worktree: worktree,
-	}, nil
+	repo.Name = name
+	repo.Config = config
+	repo.repository = repository
+	return nil
 }
 
 func nameFromRemote(repo gitconf.Config) string {
@@ -65,42 +82,31 @@ func nameFromRemote(repo gitconf.Config) string {
 	return s[len(s)-1]
 }
 
-// Exists ...
-func (repo Repo) Exists() bool {
-	logger := logrus.WithFields(logrus.Fields{
-		"repo":     repo.Name,
-		"worktree": repo.worktree,
-	})
-	logger.Debug("Checking if repo exists")
-
-	s, err := filesystem.NewStorage(repo.worktree)
+// Clone ...
+func (repo *Repo) Clone(worktree billy.Filesystem) error {
+	storer, err := filesystem.NewStorage(worktree)
 	if err != nil {
-		logger.WithError(err).Error("Failed to create new storage for repository worktree")
-		return false
-	}
-
-	r, err := git.Open(s, repo.worktree)
-
-	if err == git.ErrRepositoryNotExists {
-		return false
-	}
-
-	if r != nil {
-		return true
-	}
-
-	return false
-}
-
-// Update ...
-func (repo Repo) Update(reposDir string) error {
-	// TODO: change to Open with storer and billy.Filesystem
-	r, err := git.PlainOpen(filepath.Join(reposDir, repo.Name))
-	if err != nil {
+		logrus.WithField("repo", repo.Name).WithError(err).Error("Unable to create storage for repo")
 		return err
 	}
 
-	w, err := r.Worktree()
+	remote := repo.Config.Remotes["origin"].URLs[0]
+	logrus.WithFields(logrus.Fields{
+		"repo":   repo.Name,
+		"remote": remote,
+	}).Debug("Cloning repository from remote")
+
+	repository, err := git.Clone(storer, worktree, &git.CloneOptions{
+		URL: remote,
+	})
+
+	repo.repository = repository
+	return err
+}
+
+// Update ...
+func (repo Repo) Update() error {
+	w, err := repo.repository.Worktree()
 	if err != nil {
 		return err
 	}

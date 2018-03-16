@@ -7,10 +7,9 @@ import (
 	"github.com/mbark/punkt/conf"
 	"github.com/mbark/punkt/file"
 	"github.com/mbark/punkt/mgr/symlink"
+	billy "gopkg.in/src-d/go-billy.v4"
 
 	"github.com/sirupsen/logrus"
-	"gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/storage/filesystem"
 )
 
 // Manager ...
@@ -34,19 +33,6 @@ func (mgr Manager) repos() []Repo {
 		logrus.WithError(err).Warning("Unable to open repos.yml config file")
 	}
 
-	for idx := range repos {
-		repo := &repos[idx]
-		worktree, err := mgr.config.Fs.Chroot(mgr.config.PunktHome + "/repos/" + repo.Name)
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"repo": repo.Name,
-			}).WithError(err).Error("Failed to chroot for repository")
-			return []Repo{}
-		}
-
-		repo.worktree = worktree
-	}
-
 	return repos
 }
 
@@ -54,7 +40,19 @@ func (mgr Manager) repos() []Repo {
 func (mgr Manager) Update() error {
 	failed := []string{}
 	for _, repo := range mgr.repos() {
-		err := repo.Update(mgr.reposDir)
+		worktree, err := mgr.openRepo(repo)
+		if err != nil {
+			failed = append(failed, repo.Name)
+			continue
+		}
+
+		err = repo.Open(worktree)
+		if err != nil {
+			failed = append(failed, repo.Name)
+			continue
+		}
+
+		err = repo.Update()
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"repo": repo,
@@ -80,31 +78,13 @@ func (mgr Manager) Ensure() error {
 	for _, repo := range mgr.repos() {
 		logger := logrus.WithField("repo", repo.Name)
 
-		if repo.Exists() {
+		worktree, err := mgr.openRepo(repo)
+		if err = repo.Open(worktree); err == nil {
 			logrus.WithField("repo", repo).Debug("Repository already exists, skipping")
 			continue
 		}
 
-		dir, err := mgr.config.Fs.Chroot(mgr.reposDir + repo.Name)
-		if err != nil {
-			logger.WithError(err).Error("Failed to chroot to repo directory")
-			failed = append(failed, repo.Name)
-			continue
-		}
-
-		storer, err := filesystem.NewStorage(dir)
-		if err != nil {
-			logger.WithError(err).Error("Unable to create storage for repo")
-			failed = append(failed, repo.Name)
-			continue
-		}
-
-		remote := repo.Config.Remotes["origin"].URLs[0]
-		logger.WithField("remote", remote).Debug("Cloning repository from remote")
-		_, err = git.Clone(storer, repo.worktree, &git.CloneOptions{
-			URL: remote,
-		})
-
+		err = repo.Clone(worktree)
 		if err != nil {
 			logger.WithError(err).Error("Failed to clone repository")
 			failed = append(failed, repo.Name)
@@ -116,6 +96,17 @@ func (mgr Manager) Ensure() error {
 	}
 
 	return nil
+}
+
+func (mgr Manager) openRepo(repo Repo) (billy.Filesystem, error) {
+	worktree, err := mgr.config.Fs.Chroot(filepath.Join(mgr.reposDir, repo.Name))
+	if err != nil {
+		logrus.WithField("repo", repo.Name).WithError(err).Error("Failed to chroot to repo directory")
+		return nil, err
+	}
+
+	return worktree, err
+
 }
 
 // Dump ...

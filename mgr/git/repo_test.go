@@ -21,10 +21,11 @@ func TestGitRepo(t *testing.T) {
 
 var _ = g.Describe("Git: Repo", func() {
 	var dest string
+	var fs billy.Filesystem
 	var worktree billy.Filesystem
 
 	g.BeforeEach(func() {
-		fs := memfs.New()
+		fs = memfs.New()
 		dest = "/"
 
 		createGitRepo(fs, dest, "repo", nil)
@@ -34,46 +35,68 @@ var _ = g.Describe("Git: Repo", func() {
 		worktree = w
 	})
 
+	g.It("should always be possible to create a new repo", func() {
+		repo := git.NewRepo("name")
+		m.Expect(repo.Config).To(m.BeNil())
+		m.Expect(repo.Name).To(m.Equal("name"))
+	})
+
 	g.It("should be possible to create a new repo", func() {
-		repo, err := git.NewRepo(worktree, "")
+		repo, err := git.OpenRepo(worktree, "")
 		m.Expect(err).To(m.BeNil())
 		m.Expect(repo).NotTo(m.BeNil())
 	})
 
+	g.It("should be possible to create a new repo and open it", func() {
+		repo := git.NewRepo("name")
+		m.Expect(repo.Open(worktree)).To(m.Succeed())
+	})
+
 	g.It("should fail if there is no repo", func() {
-		repo, err := git.NewRepo(memfs.New(), "notRepo")
+		_, err := git.OpenRepo(memfs.New(), "notRepo")
 		m.Expect(err).NotTo(m.BeNil())
-		m.Expect(repo).To(m.BeNil())
 	})
 
 	g.It("should derive the name for the repo from the origin if necessary", func() {
-		repo, err := git.NewRepo(worktree, "")
+		repo, err := git.OpenRepo(worktree, "")
 		m.Expect(err).To(m.BeNil())
 		m.Expect(repo).NotTo(m.BeNil())
 		m.Expect(repo.Name).To(m.Equal("repo"))
 	})
 
 	g.It("should use the given name if specified", func() {
-		repo, err := git.NewRepo(worktree, "aname")
+		repo, err := git.OpenRepo(worktree, "aname")
 		m.Expect(err).To(m.BeNil())
 		m.Expect(repo).NotTo(m.BeNil())
 		m.Expect(repo.Name).To(m.Equal("aname"))
 	})
 
 	g.It("should use directory name if there is no default remote", func() {
-		fs := memfs.New()
-		createGitRepo(fs, "dir", "dirName", &goConfig.RemoteConfig{
+		newFs := memfs.New()
+		createGitRepo(newFs, "dir", "dirName", &goConfig.RemoteConfig{
 			Name:  "nonDefault",
 			Fetch: []goConfig.RefSpec{},
 			URLs:  []string{"/path"},
 		})
 
-		w, err := fs.Chroot("/dir/dirName")
+		w, err := newFs.Chroot("/dir/dirName")
 		m.Expect(err).To(m.BeNil())
-		repo, err := git.NewRepo(w, "")
+		repo, err := git.OpenRepo(w, "")
 		m.Expect(err).To(m.BeNil())
 		m.Expect(repo).NotTo(m.BeNil())
 		m.Expect(repo.Name).To(m.Equal("dirName"))
+	})
+
+	g.It("should be possible construct repo without worktree", func() {
+		repo := git.NewRepo("name")
+		m.Expect(repo.Name).To(m.Equal("name"))
+		m.Expect(repo.Config).To(m.BeNil())
+	})
+
+	g.It("should be possible to open a repo with the given worktree", func() {
+		repo := git.NewRepo("name")
+		m.Expect(repo.Open(worktree)).To(m.Succeed())
+		m.Expect(repo.Config).NotTo(m.BeNil())
 	})
 })
 
