@@ -2,27 +2,21 @@ package git_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"testing"
-	"time"
 
 	g "github.com/onsi/ginkgo"
 	m "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-billy.v4/memfs"
-	"gopkg.in/src-d/go-billy.v4/osfs"
 	"gopkg.in/src-d/go-billy.v4/util"
-	goGit "gopkg.in/src-d/go-git.v4"
-	goConfig "gopkg.in/src-d/go-git.v4/config"
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
-	"gopkg.in/src-d/go-git.v4/storage/filesystem"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/mbark/punkt/conf"
 	"github.com/mbark/punkt/file"
-	"github.com/mbark/punkt/mgr"
 	"github.com/mbark/punkt/mgr/git"
 	"github.com/mbark/punkt/mgr/symlink"
 )
@@ -32,9 +26,40 @@ func TestGit(t *testing.T) {
 	g.RunSpecs(t, "Git Suite")
 }
 
+type fakeRepoManager struct {
+	dumper  func(string) (*git.Repo, error)
+	ensurer func(string, git.Repo) error
+	updater func(string) (bool, error)
+}
+
+func (mgr fakeRepoManager) Dump(dir string) (*git.Repo, error) {
+	if mgr.dumper != nil {
+		return mgr.dumper(dir)
+	}
+
+	return &git.Repo{Name: filepath.Base(dir), Config: nil}, nil
+}
+
+func (mgr fakeRepoManager) Ensure(dir string, repo git.Repo) error {
+	if mgr.ensurer != nil {
+		return mgr.ensurer(dir, repo)
+	}
+
+	return nil
+}
+
+func (mgr fakeRepoManager) Update(dir string) (bool, error) {
+	if mgr.updater != nil {
+		return mgr.updater(dir)
+	}
+
+	return true, nil
+}
+
 var _ = g.Describe("Git: Manager", func() {
 	var config *conf.Config
-	var mgr mgr.Manager
+	var mgr *git.Manager
+	var repoMgr *fakeRepoManager
 
 	g.BeforeEach(func() {
 		config = &conf.Config{
@@ -47,6 +72,8 @@ var _ = g.Describe("Git: Manager", func() {
 		}
 
 		mgr = git.NewManager(*config)
+		repoMgr = &fakeRepoManager{}
+		mgr.RepoManager = repoMgr
 		logrus.SetLevel(logrus.PanicLevel)
 	})
 
@@ -94,12 +121,13 @@ var _ = g.Describe("Git: Manager", func() {
 		})
 
 		g.It("should dump the repos cloned in the repos directory", func() {
-			expected := []git.Repo{
-				*addGitRepo(config, "repo1", nil),
-				*addGitRepo(config, "repo2", nil),
+			repos := []string{"repo1", "repo2"}
+			expected := []git.Repo{}
+			for _, r := range repos {
+				addFakeRepo(config, r)
+				expected = append(expected, git.Repo{Name: r})
 			}
 
-			unmarshalAndMarshal(&expected)
 			m.Expect(mgr.Dump()).To(m.Succeed())
 
 			actual := []git.Repo{}
@@ -108,9 +136,29 @@ var _ = g.Describe("Git: Manager", func() {
 			m.Expect(actual).Should(m.ConsistOf(expected))
 		})
 
+		g.It("should fail if some repo can't be dumped", func() {
+			repos := []string{"repo1", "repo2"}
+			for _, r := range repos {
+				addFakeRepo(config, r)
+			}
+
+			repoMgr.dumper = func(dir string) (*git.Repo, error) {
+				if strings.HasSuffix(dir, repos[1]) {
+					return nil, fmt.Errorf("can't dummp %s", dir)
+				}
+
+				return &git.Repo{Name: dir}, nil
+			}
+
+			m.Expect(mgr.Dump()).NotTo(m.Succeed())
+		})
+
 		g.It("should fail if the repos directory contains non-git repos", func() {
-			err := config.Fs.MkdirAll(config.PunktHome+"/repos/notGit", os.ModePerm)
-			m.Expect(err).To(m.BeNil())
+			repoMgr.dumper = func(dir string) (*git.Repo, error) {
+				return nil, fmt.Errorf("error")
+			}
+			addFakeRepo(config, "notGit")
+
 			m.Expect(mgr.Dump()).NotTo(m.Succeed())
 		})
 
@@ -124,6 +172,19 @@ var _ = g.Describe("Git: Manager", func() {
 			m.Expect(err).To(m.BeNil())
 			m.Expect(actual).Should(m.ConsistOf([]git.Repo{}))
 		})
+
+		g.It("should append the repos directory to the path", func() {
+			addFakeRepo(config, "repo")
+
+			m.Expect(mgr.Dump()).To(m.Succeed())
+			repoMgr.dumper = func(dir string) (*git.Repo, error) {
+				expected := filepath.Join(config.PunktHome, "repos", "repo")
+				m.Expect(dir).To(m.Equal(expected))
+				return &git.Repo{Name: dir}, nil
+			}
+
+			m.Expect(mgr.Dump()).To(m.Succeed())
+		})
 	})
 
 	var _ = g.Context("when running Ensure", func() {
@@ -132,60 +193,21 @@ var _ = g.Describe("Git: Manager", func() {
 		})
 
 		g.It("should do nothing if the repo already exists", func() {
-			addGitRepo(config, "repo", nil)
 			m.Expect(mgr.Dump()).To(m.Succeed())
 
 			m.Expect(mgr.Ensure()).To(m.Succeed())
 		})
 
 		g.It("should fail if some repo can't be cloned", func() {
-			dest := config.PunktHome + "/repos/"
-			addGitRepo(config, "repo", nil)
+			repoMgr.ensurer = func(dir string, repo git.Repo) error {
+				return fmt.Errorf("fail")
+			}
+			dir := addFakeRepo(config, "repo")
 			m.Expect(mgr.Dump()).To(m.Succeed())
-			err := util.RemoveAll(config.Fs, dest+"repo")
+			err := util.RemoveAll(config.Fs, dir)
 			m.Expect(err).To(m.BeNil())
 
 			m.Expect(mgr.Ensure()).NotTo(m.Succeed())
-		})
-	})
-
-	var _ = g.Context("when cloning or fetching from another repo", func() {
-		var tmpDir string
-
-		g.BeforeEach(func() {
-			var err error
-			tmpDir, err = ioutil.TempDir("", "git-ensure")
-			m.Expect(err).To(m.BeNil())
-			config.Fs = osfs.New(tmpDir)
-
-			mgr = git.NewManager(*config)
-
-			addGitRepo(config, "cloneMe", &cloneConfig{
-				doCommit: true,
-				dest:     config.UserHome,
-				remotes:  []string{"url"},
-			})
-
-			dest := config.PunktHome + "/repos/"
-			addGitRepo(config, "repo", &cloneConfig{
-				doCommit: false,
-				remotes:  []string{tmpDir + config.UserHome + "/cloneMe"},
-				dest:     dest,
-			})
-			m.Expect(mgr.Dump()).To(m.Succeed())
-		})
-
-		g.It("should clone the repositories specified", func() {
-			err := util.RemoveAll(config.Fs, config.PunktHome+"/repos/repo")
-			m.Expect(err).To(m.BeNil())
-			m.Expect(mgr.Ensure()).To(m.Succeed())
-
-			_, err = config.Fs.ReadDir(config.PunktHome + "/repos/repo")
-			m.Expect(err).To(m.BeNil())
-		})
-
-		g.It("should do a fetch for the repositories", func() {
-			m.Expect(mgr.Update()).To(m.Succeed())
 		})
 	})
 
@@ -194,9 +216,20 @@ var _ = g.Describe("Git: Manager", func() {
 			m.Expect(mgr.Update()).To(m.Succeed())
 		})
 
-		g.It("should fail if some repos can't be updated", func() {
-			addGitRepo(config, "someRepo", nil)
+		g.It("should succeed if the repo can be updated", func() {
+			addFakeRepo(config, "repo")
 			m.Expect(mgr.Dump()).To(m.Succeed())
+
+			m.Expect(mgr.Update()).To(m.Succeed())
+		})
+
+		g.It("should fail if some repos can't be updated", func() {
+			repoMgr.updater = func(dir string) (bool, error) {
+				return false, fmt.Errorf("fail")
+			}
+			addFakeRepo(config, "repo")
+			m.Expect(mgr.Dump()).To(m.Succeed())
+
 			m.Expect(mgr.Update()).NotTo(m.Succeed())
 		})
 	})
@@ -269,12 +302,6 @@ file:/home/.gitconfig           user.name=User Name
 file:/home/.config/git/config   push.default=simple
 `
 
-type cloneConfig struct {
-	doCommit bool
-	dest     string
-	remotes  []string
-}
-
 func unmarshalAndMarshal(out interface{}) {
 	marshalled, err := yaml.Marshal(out)
 	m.Expect(err).To(m.BeNil())
@@ -282,50 +309,10 @@ func unmarshalAndMarshal(out interface{}) {
 	m.Expect(err).To(m.BeNil())
 }
 
-func addGitRepo(config *conf.Config, name string, cloneConf *cloneConfig) *git.Repo {
-	if cloneConf == nil {
-		cloneConf = &cloneConfig{
-			doCommit: true,
-			dest:     config.PunktHome + "/repos",
-			remotes:  []string{"/some/path/" + name},
-		}
-	}
-
-	dir, err := config.Fs.Chroot(cloneConf.dest + "/" + name)
+func addFakeRepo(config *conf.Config, name string) string {
+	dir := filepath.Join(config.PunktHome, "repos", name)
+	err := config.Fs.MkdirAll(dir, os.ModePerm)
 	m.Expect(err).To(m.BeNil())
 
-	storage, err := filesystem.NewStorage(dir)
-	m.Expect(err).To(m.BeNil())
-	repo, err := goGit.Init(storage, dir)
-	m.Expect(err).To(m.BeNil())
-
-	_, err = repo.CreateRemote(&goConfig.RemoteConfig{
-		Name:  "origin",
-		Fetch: []goConfig.RefSpec{},
-		URLs:  cloneConf.remotes,
-	})
-	m.Expect(err).To(m.BeNil())
-
-	w, err := repo.Worktree()
-	m.Expect(err).To(m.BeNil())
-
-	if cloneConf.doCommit {
-		f, err := dir.Create("afile")
-		m.Expect(err).To(m.BeNil())
-		_, err = w.Add(f.Name())
-		m.Expect(err).To(m.BeNil())
-
-		_, err = w.Commit("A commit", &goGit.CommitOptions{
-			Author: &object.Signature{
-				Name:  "John Doe",
-				Email: "john@doe.org",
-				When:  time.Now(),
-			},
-		})
-		m.Expect(err).To(m.BeNil())
-	}
-
-	gitRepo, err := git.OpenRepo(dir, name)
-	m.Expect(err).To(m.BeNil())
-	return gitRepo
+	return dir
 }

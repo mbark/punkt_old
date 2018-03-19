@@ -39,12 +39,12 @@ func NewSymlink(fs billy.Filesystem, from, to string) *Symlink {
 	}
 }
 
-func (symlink Symlink) expand(home string) Symlink {
-	return *NewSymlink(symlink.fs, path.ExpandHome(symlink.From, home), path.ExpandHome(symlink.To, home))
+func (symlink Symlink) expand(home string) *Symlink {
+	return NewSymlink(symlink.fs, path.ExpandHome(symlink.From, home), path.ExpandHome(symlink.To, home))
 }
 
-func (symlink Symlink) unexpend(home string) Symlink {
-	return *NewSymlink(symlink.fs, path.UnexpandHome(symlink.From, home), path.UnexpandHome(symlink.To, home))
+func (symlink Symlink) unexpend(home string) *Symlink {
+	return NewSymlink(symlink.fs, path.UnexpandHome(symlink.From, home), path.UnexpandHome(symlink.To, home))
 }
 
 // Create will construct the corresponding symlink. Returns true if the symlink
@@ -72,18 +72,21 @@ func (symlink Symlink) Create() error {
 
 // Exists returns true if the symlink already exists
 func (symlink Symlink) Exists() bool {
-	logrus.WithFields(logrus.Fields{
+	logger := logrus.WithFields(logrus.Fields{
 		"fs":   symlink.fs,
 		"to":   symlink.To,
 		"from": symlink.From,
-	}).Debug("Checking if symlink exists")
+	})
+	logger.Debug("Checking if symlink exists")
 
 	if _, err := symlink.fs.Lstat(symlink.To); err != nil {
+		logger.WithError(err).Debug("Failed to Lstat file")
 		return false
 	}
 
 	path, err := symlink.fs.Readlink(symlink.To)
 	if err != nil {
+		logger.WithError(err).Debug("Unable to readlink")
 		return false
 	}
 

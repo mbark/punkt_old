@@ -7,6 +7,7 @@ import (
 
 	g "github.com/onsi/ginkgo"
 	m "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-billy.v4/memfs"
 
 	"github.com/mbark/punkt/conf"
@@ -25,6 +26,7 @@ var _ = g.Describe("Symlink: Manager", func() {
 	var mgr mgr.Manager
 
 	g.BeforeEach(func() {
+		logrus.SetLevel(logrus.PanicLevel)
 		config = &conf.Config{
 			UserHome:   "/home",
 			PunktHome:  "/home/.config/punkt",

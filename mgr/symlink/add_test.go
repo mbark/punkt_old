@@ -2,7 +2,7 @@ package symlink_test
 
 import (
 	"os"
-	"testing"
+	"path/filepath"
 
 	g "github.com/onsi/ginkgo"
 	m "github.com/onsi/gomega"
@@ -15,11 +15,6 @@ import (
 	"github.com/mbark/punkt/mgr/symlink"
 	"github.com/mbark/punkt/path"
 )
-
-func TestAdd(t *testing.T) {
-	m.RegisterFailHandler(g.Fail)
-	g.RunSpecs(t, "Add Symlink Suite")
-}
 
 var _ = g.Describe("Symlink: Add", func() {
 	var fs billy.Filesystem
@@ -66,11 +61,13 @@ var _ = g.Describe("Symlink: Add", func() {
 	})
 
 	g.It("should give an error for a non-existant file", func() {
-		m.Expect(mgr.Add("nonExistantFile", "")).NotTo(m.Succeed())
+		_, err := mgr.Add("nonExistantFile")
+		m.Expect(err).NotTo(m.Succeed())
 	})
 
 	g.It("should be possible to create a symlink", func() {
-		m.Expect(mgr.Add(testfile, "")).To(m.Succeed())
+		_, err := mgr.Add(testfile)
+		m.Expect(err).To(m.Succeed())
 
 		info, err := fs.Lstat(testfile)
 		ExpectNoErr(err)
@@ -85,7 +82,26 @@ var _ = g.Describe("Symlink: Add", func() {
 		_, err := fs.Create(config.Dotfiles + "/testfile")
 		ExpectNoErr(err)
 
-		m.Expect(mgr.Add(testfile, "")).NotTo(m.Succeed())
+		_, err = mgr.Add(testfile)
+		m.Expect(err).NotTo(m.Succeed())
+	})
+
+	g.Context("when adding symlinks", func() {
+		var link string
+
+		g.BeforeEach(func() {
+			link = filepath.Join(config.UserHome, "link")
+			err := fs.Symlink(testfile, link)
+			m.Expect(err).To(m.BeNil())
+		})
+
+		g.It("should say it exists", func() {
+			s, err := mgr.Add(link)
+			m.Expect(err).To(m.Succeed())
+
+			m.Expect(s.Exists()).To(m.BeTrue())
+		})
+
 	})
 
 	g.Context("when reading and saving to the symlinks.yml file", func() {
@@ -109,21 +125,24 @@ var _ = g.Describe("Symlink: Add", func() {
 		})
 
 		g.It("should append the added symlink", func() {
-			m.Expect(mgr.Add(testfile, "")).To(m.Succeed())
+			_, err := mgr.Add(testfile)
+			m.Expect(err).To(m.Succeed())
 
 			actual := []symlink.Symlink{}
-			err := file.Read(fs, &actual, config.Dotfiles, "symlinks")
+			err = file.Read(fs, &actual, config.Dotfiles, "symlinks")
 			ExpectNoErr(err)
 
 			m.Expect(actual).Should(m.Equal(append(initial, testfileSymlink)))
 		})
 
 		g.It("should not add mulitple entries for the same symlink", func() {
-			m.Expect(mgr.Add(testfile, "")).To(m.Succeed())
-			m.Expect(mgr.Add(testfile, "")).To(m.Succeed())
+			_, err := mgr.Add(testfile)
+			m.Expect(err).To(m.Succeed())
+			_, err = mgr.Add(testfile)
+			m.Expect(err).To(m.Succeed())
 
 			actual := []symlink.Symlink{}
-			err := file.Read(fs, &actual, config.Dotfiles, "symlinks")
+			err = file.Read(fs, &actual, config.Dotfiles, "symlinks")
 			ExpectNoErr(err)
 
 			m.Expect(actual).Should(m.Equal(append(initial, testfileSymlink)))
@@ -136,7 +155,8 @@ var _ = g.Describe("Symlink: Add", func() {
 			_, err = fs.Create("/dir/absfile")
 			ExpectNoErr(err)
 
-			m.Expect(mgr.Add("/dir/absfile", "")).To(m.Succeed())
+			_, err = mgr.Add("/dir/absfile")
+			m.Expect(err).To(m.Succeed())
 
 			actual := []symlink.Symlink{}
 			err = file.Read(fs, &actual, config.Dotfiles, "symlinks")

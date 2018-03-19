@@ -39,7 +39,7 @@ func (mgr Manager) Dump() error {
 	failed := []string{}
 	for _, s := range mgr.ConfigFiles() {
 		symlinkMgr := symlink.NewManager(mgr.config)
-		err := symlinkMgr.Add(s, "")
+		_, err := symlinkMgr.Add(s)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"symlink": s,

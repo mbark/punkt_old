@@ -3,11 +3,10 @@ package brew
 import (
 	"path/filepath"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/mbark/punkt/conf"
 	"github.com/mbark/punkt/mgr/symlink"
 	"github.com/mbark/punkt/run"
+	"github.com/sirupsen/logrus"
 )
 
 // Manager ...
@@ -41,7 +40,8 @@ func (mgr Manager) Dump() error {
 
 	brewfile := filepath.Join(mgr.config.UserHome, ".Brewfile")
 	symlinkMgr := symlink.NewManager(mgr.config)
-	return symlinkMgr.Add(brewfile, "")
+	_, err = symlinkMgr.Add(brewfile)
+	return err
 }
 
 // Ensure ...

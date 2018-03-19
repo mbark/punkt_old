@@ -12,17 +12,17 @@ import (
 )
 
 // Add ...
-func (mgr Manager) Add(from, to string) error {
-	symlink, err := mgr.addSymlink(from, to)
+func (mgr Manager) Add(from string) (*Symlink, error) {
+	symlink, err := mgr.addSymlink(from)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	unexpanded := symlink.unexpend(mgr.config.UserHome)
-	return mgr.saveSymlinks(unexpanded)
+	return symlink, mgr.saveSymlinks(*unexpanded)
 }
 
-func (mgr Manager) addSymlink(from, to string) (*Symlink, error) {
+func (mgr Manager) addSymlink(from string) (*Symlink, error) {
 	if !filepath.IsAbs(from) {
 		from = mgr.config.Fs.Join(mgr.config.WorkingDir, from)
 	}
@@ -33,23 +33,14 @@ func (mgr Manager) addSymlink(from, to string) (*Symlink, error) {
 		return nil, err
 	}
 
-	if to == "" {
-		if strings.HasPrefix(pathFromHome, "..") {
-			to = mgr.config.Fs.Join(mgr.config.Dotfiles, from)
-		} else {
-			to = mgr.config.Fs.Join(mgr.config.Dotfiles, pathFromHome)
-		}
-
-		logrus.WithFields(logrus.Fields{
-			"from":      from,
-			"relpath":   pathFromHome,
-			"placement": to,
-		}).Info("No location for new file placement given, using default location in dotfiles directory")
-
+	var to string
+	if strings.HasPrefix(pathFromHome, "..") {
+		to = mgr.config.Fs.Join(mgr.config.Dotfiles, from)
+	} else {
+		to = mgr.config.Fs.Join(mgr.config.Dotfiles, pathFromHome)
 	}
 
 	symlink := NewSymlink(mgr.config.Fs, to, from)
-
 	logger := logrus.WithFields(logrus.Fields{
 		"symlink": symlink,
 	})
@@ -93,7 +84,6 @@ func (mgr Manager) saveSymlinks(new Symlink) error {
 	for _, existing := range saved {
 		if new.From == existing.From && new.To == existing.To {
 			logrus.WithField("symlink", new).Info("Symlink already stored in file, not adding")
-			// TODO: this is clearly a bug, add test and fix
 			return nil
 		}
 	}
