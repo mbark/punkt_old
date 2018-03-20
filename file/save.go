@@ -18,6 +18,7 @@ func SaveYaml(fs billy.Filesystem, content interface{}, dest, name string) error
 		logrus.WithError(err).Error("Unable to marshal db to yaml")
 		return err
 	}
+	logrus.WithField("out", out).Debug("marshalled")
 
 	path := filepath.Join(dest, name+".yml")
 	s := newSaver(fs, path, out)
@@ -59,7 +60,6 @@ func newSaver(fs billy.Filesystem, path string, content []byte) *saver {
 func (s saver) Save() error {
 	err := path.CreateNecessaryDirectories(s.fs, s.path)
 	if err != nil {
-		s.logger.WithError(err).Error("Unable to create necessary directories")
 		return err
 	}
 

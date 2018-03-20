@@ -3,6 +3,7 @@ package symlink_test
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 
 	g "github.com/onsi/ginkgo"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/mbark/punkt/conf"
 	"github.com/mbark/punkt/file"
-	"github.com/mbark/punkt/mgr"
 	"github.com/mbark/punkt/mgr/symlink"
 )
 
@@ -23,7 +23,7 @@ func TestSymlink(t *testing.T) {
 
 var _ = g.Describe("Symlink: Manager", func() {
 	var config *conf.Config
-	var mgr mgr.Manager
+	var mgr *symlink.Manager
 
 	g.BeforeEach(func() {
 		logrus.SetLevel(logrus.PanicLevel)
@@ -75,22 +75,27 @@ var _ = g.Describe("Symlink: Manager", func() {
 		_, err := config.Fs.Create(config.UserHome + to)
 		m.Expect(err).To(m.BeNil())
 
-		fail := createFile(config, "/file", to)
+		fail1 := createFile(config, "/file", to)
+		fail2 := symlink.NewSymlink(config.Fs, "/non/existant", "/some/where")
 		success := createFile(config, "/afile", "/some/where")
 
-		initial := []symlink.Symlink{*fail, *success}
+		initial := []symlink.Symlink{*fail1, *fail2, *success}
 		err = file.SaveYaml(config.Fs, initial, config.Dotfiles, "symlinks")
 		m.Expect(err).To(m.BeNil())
 
 		m.Expect(mgr.Ensure()).NotTo(m.Succeed())
-		m.Expect(fail.Exists()).NotTo(m.BeTrue())
+		m.Expect(fail1.Exists()).NotTo(m.BeTrue())
+		m.Expect(fail2.Exists()).NotTo(m.BeTrue())
 		m.Expect(success.Exists()).To(m.BeTrue())
 	})
 
 	g.It("should succeed when a symlink already exists", func() {
-		s := createFile(config, "/file", "/another/file")
-		err := config.Fs.Symlink("/file", "/another/file")
+		path := filepath.Join(config.UserHome, "file")
+		_, err := config.Fs.Create(path)
 		m.Expect(err).To(m.BeNil())
+		s, err := mgr.Add(path)
+		m.Expect(err).To(m.BeNil())
+		m.Expect(s.Exists()).To(m.BeTrue())
 
 		err = file.SaveYaml(config.Fs, []symlink.Symlink{*s}, config.Dotfiles, "symlinks")
 		m.Expect(err).To(m.BeNil())

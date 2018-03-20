@@ -172,7 +172,7 @@ func (mgr Manager) dumpRepos() ([]Repo, error) {
 
 	files, err := mgr.config.Fs.ReadDir(mgr.reposDir)
 	if err != nil {
-		logrus.WithError(err).Warning("Unable to read repos directory")
+		logrus.WithField("dir", mgr.reposDir).WithError(err).Warning("Unable to read repos directory")
 		return repos, err
 	}
 

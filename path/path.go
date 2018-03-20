@@ -15,7 +15,13 @@ import (
 func CreateNecessaryDirectories(fs billy.Filesystem, file string) error {
 	dir := filepath.Dir(file)
 	logrus.WithField("dir", dir).Debug("Creating required directories")
-	return fs.MkdirAll(dir, os.ModePerm)
+
+	err := fs.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		logrus.WithField("file", file).WithError(err).Warning("Unable to create necessary directories")
+	}
+
+	return err
 }
 
 // GetUserHome returns the user's home directory

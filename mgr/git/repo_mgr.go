@@ -51,11 +51,10 @@ func (mgr GoGitRepoManager) storage(dir string) (storage.Storer, billy.Filesyste
 
 func (mgr GoGitRepoManager) open(dir string) (*git.Repository, error) {
 	storage, worktree, err := mgr.storage(dir)
-	logrus.WithFields(logrus.Fields{
-		"storage":  storage,
-		"worktree": worktree.Root(),
-	}).WithError(err).Debug("Failed to create storage for repository")
 	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"directory": dir,
+		}).WithError(err).Debug("Failed to create storage for repository")
 		return nil, err
 	}
 

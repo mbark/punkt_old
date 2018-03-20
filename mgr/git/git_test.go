@@ -2,6 +2,7 @@ package git_test
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	m "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-billy.v4/memfs"
+	"gopkg.in/src-d/go-billy.v4/osfs"
 	"gopkg.in/src-d/go-billy.v4/util"
 	yaml "gopkg.in/yaml.v2"
 
@@ -184,6 +186,17 @@ var _ = g.Describe("Git: Manager", func() {
 			}
 
 			m.Expect(mgr.Dump()).To(m.Succeed())
+		})
+
+		g.It("should fail if the repos directory can't be read", func() {
+			// we have to use the real filesystem here to actually get an error
+			tmpdir, err := ioutil.TempDir("", "git-mgr")
+			m.Expect(err).To(m.BeNil())
+			config.Fs = osfs.New(tmpdir)
+
+			mgr = git.NewManager(*config)
+
+			m.Expect(mgr.Dump()).NotTo(m.Succeed())
 		})
 	})
 

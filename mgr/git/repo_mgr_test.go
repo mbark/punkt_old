@@ -134,6 +134,13 @@ var _ = Describe("Git: Repo Manager", func() {
 			Expect(err).NotTo(BeNil())
 			Expect(expected).To(BeNil())
 		})
+
+		It("should fail if the storage can't be allocated", func() {
+			expected, err := mgr.Dump("../../../")
+
+			Expect(err).NotTo(BeNil())
+			Expect(expected).To(BeNil())
+		})
 	})
 
 	Context("Ensure", func() {
@@ -180,6 +187,10 @@ var _ = Describe("Git: Repo Manager", func() {
 			Expect(err).To(BeNil())
 
 			Expect(mgr.Ensure(name, *repo)).NotTo(Succeed())
+		})
+
+		It("should fail if storage can't be allocated", func() {
+			Expect(mgr.Ensure("../../", git.Repo{})).NotTo(Succeed())
 		})
 	})
 
@@ -237,6 +248,11 @@ var _ = Describe("Git: Repo Manager", func() {
 			updated, err := mgr.Update("repo")
 			Expect(err).NotTo(BeNil())
 			Expect(updated).To(BeFalse())
+		})
+
+		It("should fail if the repository's storage can't be created", func() {
+			_, err := mgr.Update("../../")
+			Expect(err).NotTo(BeNil())
 		})
 	})
 })

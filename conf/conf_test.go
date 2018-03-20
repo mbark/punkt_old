@@ -78,5 +78,18 @@ var _ = Describe("Manager", func() {
 			Expect(config.Dotfiles).To(Equal(savedConfig["dotfiles"]))
 			Expect(config.PunktHome).To(Equal(savedConfig["punktHome"]))
 		})
+
+		It("should set a default for loglevel", func() {
+			savedConfig["logLevel"] = "mumbojumbo"
+			err := file.SaveYaml(osfs.New("/"), savedConfig, dir, "config")
+			Expect(err).To(BeNil())
+
+			conf.NewConfig(configFile)
+			Expect(logrus.GetLevel()).To(Equal(logrus.InfoLevel))
+		})
+
+		It("should fail if the give path can't be made absolute", func() {
+
+		})
 	})
 })

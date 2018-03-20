@@ -62,7 +62,6 @@ func (symlink Symlink) Create() error {
 
 	err = path.CreateNecessaryDirectories(symlink.fs, symlink.To)
 	if err != nil {
-		logger.WithError(err).Error("Unable to create necessary directories")
 		return err
 	}
 
