@@ -27,6 +27,7 @@
     ".",
     "hcl/ast",
     "hcl/parser",
+    "hcl/printer",
     "hcl/scanner",
     "hcl/strconv",
     "hcl/token",
@@ -34,7 +35,7 @@
     "json/scanner",
     "json/token"
   ]
-  revision = "23c074d0eceb2b8a5bfdbb271ab780cde70f05a8"
+  revision = "f40e974e75af4e271d97ce0fc917af5898ae7bda"
 
 [[projects]]
   name = "github.com/inconshreveable/mousetrap"
@@ -53,6 +54,18 @@
   packages = ["."]
   revision = "9fc7bb800b555d63157c65a904c86a2cc7b4e795"
   version = "0.4"
+
+[[projects]]
+  name = "github.com/lestrrat-go/file-rotatelogs"
+  packages = ["."]
+  revision = "9df8b44f21785240553882138c5df2e9cc1db910"
+  version = "v2.1.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/lestrrat/go-strftime"
+  packages = ["."]
+  revision = "ba3bf9c1d0421aa146564a632931730344f1f9f1"
 
 [[projects]]
   name = "github.com/magiconair/properties"
@@ -129,6 +142,18 @@
   version = "v1.1.0"
 
 [[projects]]
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
+
+[[projects]]
+  name = "github.com/rifflock/lfshook"
+  packages = ["."]
+  revision = "bf539943797a1f34c1f502d07de419b5238ae6c6"
+  version = "v2.3"
+
+[[projects]]
   name = "github.com/sergi/go-diff"
   packages = ["diffmatchpatch"]
   revision = "1744e2970ca51c86172c8190fadad617561ed6e7"
@@ -146,8 +171,8 @@
     ".",
     "mem"
   ]
-  revision = "bb8f1927f2a9d3ab41c9340aa034f6b803f4359c"
-  version = "v1.0.2"
+  revision = "63644898a8da0bc22138abf860edaf5277b6102e"
+  version = "v1.1.0"
 
 [[projects]]
   name = "github.com/spf13/cast"
@@ -158,8 +183,8 @@
 [[projects]]
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "7b2c5ac9fc04fc5efafb60700713d4fa609b777b"
-  version = "v0.0.1"
+  revision = "a1f051bc3eba734da4772d60e2d677f47cf93ef4"
+  version = "v0.0.2"
 
 [[projects]]
   branch = "master"
@@ -176,8 +201,8 @@
 [[projects]]
   name = "github.com/spf13/viper"
   packages = ["."]
-  revision = "25b30aa063fc18e48662b86996252eabdcf2f0c7"
-  version = "v1.0.0"
+  revision = "b5e8006cbee93ec955a89ab31e0e3ce3204f3736"
+  version = "v1.0.2"
 
 [[projects]]
   name = "github.com/src-d/gcfg"
@@ -217,7 +242,7 @@
     "ssh/knownhosts",
     "ssh/terminal"
   ]
-  revision = "374053ea96cb300f8671b8d3b07edeeb06e203b4"
+  revision = "12892e8c234f4fe6f6803f052061de9057903bb2"
 
 [[projects]]
   branch = "master"
@@ -228,7 +253,7 @@
     "html/atom",
     "html/charset"
   ]
-  revision = "24dd3780ca4f75fed9f321890729414a4b5d3f13"
+  revision = "b68f30494add4df6bd8ef5e82803f308e7f7c59c"
 
 [[projects]]
   branch = "master"
@@ -237,7 +262,7 @@
     "unix",
     "windows"
   ]
-  revision = "2f1e207ee39ff70f3433e49c6eb52677a515e3b5"
+  revision = "378d26f46672a356c46195c28f61bdb4c0a781dd"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -341,12 +366,12 @@
 [[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "7f97868eec74b32b0982dd158a51a446d1da7eb5"
-  version = "v2.1.1"
+  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
+  version = "v2.2.1"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e9c12e0edbcb02654f146f12d72f2f10a9f79320cc9e63bcfc76ca196a3bcb84"
+  inputs-digest = "cdccf340f099c65194270edc410aeafb0ea13c26ca8f3a126e204c26b1af8dd6"
   solver-name = "gps-cdcl"
   solver-version = 1

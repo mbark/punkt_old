@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/kyokomi/emoji.v1"
@@ -55,6 +54,5 @@ func init() {
 
 func initConfig() {
 	config = conf.NewConfig(path.ExpandHome(configFile, path.GetUserHome()))
-	logrus.WithField("config", config).Debug("Creating managers with the given config")
 	managers = mgr.All(*config)
 }

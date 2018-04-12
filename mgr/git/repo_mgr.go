@@ -85,7 +85,7 @@ func (mgr GoGitRepoManager) Ensure(dir string, repo Repo) error {
 	logger.Info("Ensuring repository exists")
 
 	if _, ok := mgr.open(dir); ok == nil {
-		logger.Error("Repository already exists")
+		logger.Info("Repository already exists")
 		return nil
 	}
 

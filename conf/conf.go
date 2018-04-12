@@ -1,11 +1,14 @@
 package conf
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
+	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"gopkg.in/src-d/go-billy.v4"
@@ -26,8 +29,13 @@ type Config struct {
 
 // NewConfig builds a new configuration object from the given parameters
 func NewConfig(configFile string) *Config {
-	readConfigFile(configFile)
+	err := readConfigFile(configFile)
+	if err != nil {
+		os.Exit(1)
+	}
+
 	setLogLevel()
+	configureLogFiles()
 
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -38,16 +46,17 @@ func NewConfig(configFile string) *Config {
 		PunktHome:  viper.GetString("punktHome"),
 		Dotfiles:   viper.GetString("dotfiles"),
 		UserHome:   path.GetUserHome(),
-		Fs:         osfs.New("/"),
 		WorkingDir: cwd,
+		Fs:         osfs.New("/"),
 		Command:    exec.Command,
 	}
 }
 
-func readConfigFile(configFile string) {
+func readConfigFile(configFile string) error {
 	abs, err := filepath.Abs(configFile)
 	if err != nil {
-		logrus.WithField("config", configFile).WithError(err).Error("Error reading provided configuration file")
+		fmt.Printf("Failed to make %s an absolute path: %s\n", configFile, err)
+		return err
 	}
 
 	base := filepath.Base(abs)
@@ -57,15 +66,12 @@ func readConfigFile(configFile string) {
 	viper.SetConfigName(fileName)
 	viper.AddConfigPath(path)
 
-	logger := logrus.WithFields(logrus.Fields{
-		"config": configFile,
-		"path":   path,
-		"name":   fileName,
-	})
-	logger.Info("Reading configuration file")
 	if err := viper.ReadInConfig(); err != nil {
-		logger.WithError(err).Error("Failed to read config file")
+		fmt.Printf("Failed to read config file %s: %s\n", configFile, err)
+		return err
 	}
+
+	return nil
 }
 
 func setLogLevel() {
@@ -79,4 +85,20 @@ func setLogLevel() {
 
 	logrus.WithField("level", lvl).Debug("Setting log level")
 	logrus.SetLevel(lvl)
+}
+
+func configureLogFiles() {
+	path := filepath.Join(viper.GetString("punktHome"), "punkt.log")
+	writer, err := rotatelogs.New(
+		path+".%Y%m%d%H%M",
+		rotatelogs.WithLinkName(path),
+		rotatelogs.WithMaxAge(time.Duration(86400)*time.Second),
+		rotatelogs.WithRotationTime(time.Duration(604800)*time.Second),
+	)
+
+	if err != nil {
+		logrus.WithError(err).Error("Unable to create new writer")
+	} else {
+		logrus.SetOutput(writer)
+	}
 }
