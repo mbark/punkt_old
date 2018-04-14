@@ -14,6 +14,7 @@ import (
 	"gopkg.in/src-d/go-billy.v4"
 	"gopkg.in/src-d/go-billy.v4/osfs"
 
+	"github.com/mbark/punkt/file"
 	"github.com/mbark/punkt/path"
 )
 
@@ -25,15 +26,12 @@ type Config struct {
 	WorkingDir string
 	Fs         billy.Filesystem
 	Command    func(string, ...string) *exec.Cmd
+	Managers   map[string]map[string]string
 }
 
 // NewConfig builds a new configuration object from the given parameters
 func NewConfig(configFile string) *Config {
-	err := readConfigFile(configFile)
-	if err != nil {
-		os.Exit(1)
-	}
-
+	readConfigFile(configFile)
 	setLogLevel()
 	configureLogFiles()
 
@@ -41,22 +39,24 @@ func NewConfig(configFile string) *Config {
 	if err != nil {
 		logrus.WithError(err).Fatal("Unable to determine working directory")
 	}
+	fs := osfs.New("/")
 
 	return &Config{
 		PunktHome:  viper.GetString("punktHome"),
 		Dotfiles:   viper.GetString("dotfiles"),
 		UserHome:   path.GetUserHome(),
 		WorkingDir: cwd,
-		Fs:         osfs.New("/"),
+		Fs:         fs,
 		Command:    exec.Command,
+		Managers:   readManagers(fs),
 	}
 }
 
-func readConfigFile(configFile string) error {
+func readConfigFile(configFile string) {
 	abs, err := filepath.Abs(configFile)
 	if err != nil {
 		fmt.Printf("Failed to make %s an absolute path: %s\n", configFile, err)
-		return err
+		return
 	}
 
 	base := filepath.Base(abs)
@@ -68,10 +68,7 @@ func readConfigFile(configFile string) error {
 
 	if err := viper.ReadInConfig(); err != nil {
 		fmt.Printf("Failed to read config file %s: %s\n", configFile, err)
-		return err
 	}
-
-	return nil
 }
 
 func setLogLevel() {
@@ -101,4 +98,18 @@ func configureLogFiles() {
 	} else {
 		logrus.SetOutput(writer)
 	}
+}
+
+func readManagers(fs billy.Filesystem) map[string]map[string]string {
+	var mgrs map[string]map[string]string
+	err := file.ReadToml(fs, &mgrs, viper.GetString("punktHome"), "managers")
+	if err != nil {
+		logrus.WithError(err).Error("Unable to read managers.toml")
+	} else {
+		logrus.WithFields(logrus.Fields{
+			"managers": mgrs,
+		}).Info("Found configuration for managers")
+	}
+
+	return mgrs
 }

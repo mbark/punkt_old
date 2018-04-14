@@ -21,9 +21,11 @@ func init() {
 // Update ...
 func update() {
 	for i := range managers {
-		err := managers[i].Update()
+		_, err := managers[i].Update()
 		if err != nil {
-			logrus.WithField("manager", managers[i]).WithError(err).Error("Command ensure failed for manager")
+			logrus.WithFields(logrus.Fields{
+				"manager": managers[i],
+			}).WithError(err).Error("Command ensure failed for manager")
 		}
 	}
 }

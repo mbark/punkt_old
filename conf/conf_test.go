@@ -33,6 +33,7 @@ var _ = Describe("Manager", func() {
 
 	Context("with an existing config file", func() {
 		var dir string
+		var home string
 		var savedConfig map[string]string
 		var configFile string
 
@@ -42,18 +43,22 @@ var _ = Describe("Manager", func() {
 
 			dir = d
 
+			home, err = ioutil.TempDir("", "conf")
+			Expect(err).To(BeNil())
+
 			savedConfig = make(map[string]string)
 			savedConfig["logLevel"] = "warn"
 			savedConfig["dotfiles"] = "/some/where"
-			savedConfig["punktHome"] = "/a/home"
-			err = file.SaveYaml(osfs.New("/"), savedConfig, dir, "config")
+			savedConfig["punktHome"] = home
+			err = file.SaveToml(osfs.New("/"), savedConfig, dir, "config")
 			Expect(err).To(BeNil())
 
-			configFile = filepath.Join(dir, "config.yml")
+			configFile = filepath.Join(dir, "config.toml")
 		})
 
 		AfterEach(func() {
 			Expect(os.RemoveAll(dir)).To(Succeed())
+			Expect(os.RemoveAll(home)).To(Succeed())
 		})
 
 		It("should read the given config file", func() {
@@ -81,7 +86,7 @@ var _ = Describe("Manager", func() {
 
 		It("should set a default for loglevel", func() {
 			savedConfig["logLevel"] = "mumbojumbo"
-			err := file.SaveYaml(osfs.New("/"), savedConfig, dir, "config")
+			err := file.SaveToml(osfs.New("/"), savedConfig, dir, "config")
 			Expect(err).To(BeNil())
 
 			conf.NewConfig(configFile)

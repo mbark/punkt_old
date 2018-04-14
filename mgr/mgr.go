@@ -1,26 +1,30 @@
 package mgr
 
 import (
+	"path/filepath"
+
 	"github.com/mbark/punkt/conf"
-	"github.com/mbark/punkt/mgr/brew"
-	"github.com/mbark/punkt/mgr/git"
-	"github.com/mbark/punkt/mgr/symlink"
-	"github.com/mbark/punkt/mgr/yarn"
+	"github.com/mbark/punkt/mgr/generic"
 )
 
 // Manager ...
 type Manager interface {
-	Dump() error
+	Dump() (string, error)
 	Ensure() error
-	Update() error
+	Update() (string, error)
 }
 
 // All returns a list of all available managers
 func All(c conf.Config) []Manager {
-	return []Manager{
-		brew.NewManager(c),
-		git.NewManager(c),
-		symlink.NewManager(c),
-		yarn.NewManager(c),
+	var mgrs []Manager
+	for name := range c.Managers {
+		mgr := generic.NewManager(name, configFile(c, name), c)
+		mgrs = append(mgrs, mgr)
 	}
+
+	return mgrs
+}
+
+func configFile(c conf.Config, name string) string {
+	return filepath.Join(c.PunktHome, name+".toml")
 }

@@ -2,6 +2,7 @@ package run
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -29,11 +30,49 @@ func CaptureOutput(cmd *exec.Cmd) (*bytes.Buffer, *bytes.Buffer) {
 	return &stdout, &stderr
 }
 
-// Run ...
-func Run(cmd *exec.Cmd) error {
-	logger := logrus.WithFields(logrus.Fields{
+func loggerWithCmd(cmd *exec.Cmd) *logrus.Entry {
+	return logrus.WithFields(logrus.Fields{
 		"cmd": strings.Join(cmd.Args, " "),
 	})
+}
+
+// WithCapture runs the given command while printing the output
+// to the user and also capturing stdout for later use.
+func WithCapture(cmd *exec.Cmd) (*bytes.Buffer, error) {
+	logger := loggerWithCmd(cmd)
+	var stdoutBuf bytes.Buffer
+
+	stdoutIn, _ := cmd.StdoutPipe()
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	stdout := io.MultiWriter(os.Stdout, &stdoutBuf)
+
+	err := cmd.Start()
+	if err != nil {
+		logger.WithError(err).Error("Failed to start command")
+		return nil, err
+	}
+
+	var stdoutErr error
+	go func() {
+		_, stdoutErr = io.Copy(stdout, stdoutIn)
+		if stdoutErr != nil {
+			logrus.WithError(err).Error("stdout copy failed")
+		}
+	}()
+
+	err = cmd.Wait()
+	if err != nil {
+		logger.WithError(err).Error("Unable to run command")
+	}
+
+	return &stdoutBuf, nil
+}
+
+// Run ...
+func Run(cmd *exec.Cmd) error {
+	logger := loggerWithCmd(cmd)
 
 	logger.Info("Running command")
 	err := cmd.Run()

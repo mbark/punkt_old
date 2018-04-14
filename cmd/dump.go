@@ -28,9 +28,11 @@ func init() {
 
 func dump(cmd *cobra.Command, args []string) {
 	for i := range managers {
-		err := managers[i].Dump()
+		_, err := managers[i].Dump()
 		if err != nil {
-			logrus.WithField("manager", managers[i]).WithError(err).Error("Command dump failed for manager")
+			logrus.WithFields(logrus.Fields{
+				"manager": managers[i],
+			}).WithError(err).Error("Command dump failed for manager")
 		}
 	}
 }
