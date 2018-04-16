@@ -1,7 +1,9 @@
 package cmd
 
 import (
-	"github.com/sirupsen/logrus"
+	"os"
+
+	"github.com/mbark/punkt/mgr"
 	"github.com/spf13/cobra"
 )
 
@@ -20,10 +22,8 @@ func init() {
 }
 
 func ensure() {
-	for i := range managers {
-		err := managers[i].Ensure()
-		if err != nil {
-			logrus.WithField("manager", managers[i]).WithError(err).Error("Command ensure failed for manager")
-		}
+	err := mgr.Ensure(*config)
+	if err != nil {
+		os.Exit(1)
 	}
 }

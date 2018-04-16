@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-billy.v4/memfs"
 
 	"github.com/mbark/punkt/conf"
@@ -18,7 +19,11 @@ func TestMgr(t *testing.T) {
 }
 
 var _ = Describe("Manager", func() {
-	It("should return an empty list if no managers are given", func() {
+	BeforeEach(func() {
+		logrus.SetLevel(logrus.PanicLevel)
+	})
+
+	It("should always return at least the git and symlink managers", func() {
 		config := conf.Config{
 			PunktHome:  "",
 			Dotfiles:   "",
@@ -29,10 +34,12 @@ var _ = Describe("Manager", func() {
 			Managers:   make(map[string]map[string]string),
 		}
 
-		Expect(len(mgr.All(config))).To(Equal(0))
+		all := mgr.All(config)
+
+		Expect(len(all)).To(Equal(2))
 	})
 
-	It("should return a non-zero list if a manager is provided", func() {
+	It("should return an additional manager if configured", func() {
 		mgrs := make(map[string]map[string]string)
 		mgrs["foo"] = make(map[string]string)
 
@@ -46,6 +53,8 @@ var _ = Describe("Manager", func() {
 			Managers:   mgrs,
 		}
 
-		Expect(len(mgr.All(config))).To(Equal(1))
+		all := mgr.All(config)
+
+		Expect(len(all)).To(Equal(3))
 	})
 })

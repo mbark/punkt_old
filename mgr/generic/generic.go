@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/mbark/punkt/conf"
+	"github.com/mbark/punkt/file"
+	"github.com/mbark/punkt/mgr/symlink"
 	"github.com/mbark/punkt/run"
 	"github.com/sirupsen/logrus"
 )
@@ -15,6 +17,11 @@ type Manager struct {
 	config     conf.Config
 	commands   map[string]string
 	configFile string
+}
+
+// Config ...
+type Config struct {
+	Symlinks []symlink.Symlink
 }
 
 // NewManager ...
@@ -52,6 +59,11 @@ func (mgr Manager) resolveCommand(operation string, args ...string) *exec.Cmd {
 	return mgr.config.Command("sh", "-c", command)
 }
 
+// Name ...
+func (mgr Manager) Name() string {
+	return mgr.name
+}
+
 // Dump ...
 func (mgr Manager) Dump() (string, error) {
 	cmd := mgr.resolveCommand("dump")
@@ -64,19 +76,32 @@ func (mgr Manager) Dump() (string, error) {
 }
 
 // Update ...
-func (mgr Manager) Update() (string, error) {
-	cmd := mgr.resolveCommand("update", mgr.configFile)
-	stdout, err := run.WithCapture(cmd)
-	if err != nil {
-		return "", err
-	}
+func (mgr Manager) Update() error {
+	cmd := mgr.resolveCommand("ensure", mgr.configFile)
+	run.PrintOutputToUser(cmd)
 
-	return stdout.String(), nil
+	return run.Run(cmd)
 }
 
 // Ensure ...
 func (mgr Manager) Ensure() error {
 	cmd := mgr.resolveCommand("ensure", mgr.configFile)
 	run.PrintOutputToUser(cmd)
+
 	return run.Run(cmd)
+}
+
+// Symlinks ...
+func (mgr Manager) Symlinks() ([]symlink.Symlink, error) {
+	var config Config
+	err := file.ReadToml(mgr.config.Fs, &config, mgr.configFile)
+	if err != nil && err != file.ErrNoSuchFile {
+		if err == file.ErrNoSuchFile {
+			return []symlink.Symlink{}, nil
+		}
+
+		return nil, err
+	}
+
+	return config.Symlinks, nil
 }

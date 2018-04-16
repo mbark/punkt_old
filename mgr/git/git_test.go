@@ -2,23 +2,18 @@ package git_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 
+	"github.com/BurntSushi/toml"
 	g "github.com/onsi/ginkgo"
 	m "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-billy.v4/memfs"
-	"gopkg.in/src-d/go-billy.v4/osfs"
-	"gopkg.in/src-d/go-billy.v4/util"
-	yaml "gopkg.in/yaml.v2"
 
 	"github.com/mbark/punkt/conf"
-	"github.com/mbark/punkt/file"
 	"github.com/mbark/punkt/mgr/git"
 	"github.com/mbark/punkt/mgr/symlink"
 )
@@ -30,7 +25,7 @@ func TestGit(t *testing.T) {
 
 type fakeRepoManager struct {
 	dumper  func(string) (*git.Repo, error)
-	ensurer func(string, git.Repo) error
+	ensurer func(git.Repo) error
 	updater func(string) (bool, error)
 }
 
@@ -42,9 +37,9 @@ func (mgr fakeRepoManager) Dump(dir string) (*git.Repo, error) {
 	return &git.Repo{Name: filepath.Base(dir), Config: nil}, nil
 }
 
-func (mgr fakeRepoManager) Ensure(dir string, repo git.Repo) error {
+func (mgr fakeRepoManager) Ensure(repo git.Repo) error {
 	if mgr.ensurer != nil {
-		return mgr.ensurer(dir, repo)
+		return mgr.ensurer(repo)
 	}
 
 	return nil
@@ -62,6 +57,7 @@ var _ = g.Describe("Git: Manager", func() {
 	var config *conf.Config
 	var mgr *git.Manager
 	var repoMgr *fakeRepoManager
+	var configFile string
 
 	g.BeforeEach(func() {
 		config = &conf.Config{
@@ -73,130 +69,39 @@ var _ = g.Describe("Git: Manager", func() {
 			Command:    fakeCommand,
 		}
 
-		mgr = git.NewManager(*config)
+		configFile = filepath.Join(config.PunktHome, "git.toml")
+		mgr = git.NewManager(*config, configFile)
 		repoMgr = &fakeRepoManager{}
 		mgr.RepoManager = repoMgr
 		logrus.SetLevel(logrus.PanicLevel)
 	})
 
 	var _ = g.Context("when running Dump", func() {
-		g.It("should fail if the command fails", func() {
-			config.Command = fakeWithEnvCommand("FAILING=true")
-			mgr = git.NewManager(*config)
-			m.Expect(mgr.Dump()).NotTo(m.Succeed())
-		})
-
-		g.It("should create symlinks for the config files in the git config", func() {
+		g.It("should return toml with the symlinks", func() {
 			config.Command = fakeWithEnvCommand("WITH_GITCONFIG=true")
-			mgr = git.NewManager(*config)
+			mgr = git.NewManager(*config, configFile)
 
-			_, err := config.Fs.Create(config.UserHome + "/.gitconfig")
+			file1 := filepath.Join(config.UserHome, ".gitconfig")
+			file2 := filepath.Join(config.UserHome, ".config", "git", "config")
+
+			_, err := config.Fs.Create(file1)
 			m.Expect(err).To(m.BeNil())
-			_, err = config.Fs.Create(config.UserHome + "/.config/git/config")
+			_, err = config.Fs.Create(file2)
 			m.Expect(err).To(m.BeNil())
 
 			expected := []symlink.Symlink{
-				*symlink.NewSymlink(config.Fs, "~/.dotfiles/.gitconfig", "~/.gitconfig"),
-				*symlink.NewSymlink(config.Fs, "~/.dotfiles/.config/git/config", "~/.config/git/config"),
+				{Target: "~/.dotfiles/.gitconfig", Link: "~/.gitconfig"},
+				{Target: "~/.dotfiles/.config/git/config", Link: "~/.config/git/config"},
 			}
-			unmarshalAndMarshal(&expected)
 
-			m.Expect(mgr.Dump()).To(m.Succeed())
-
-			actual := []symlink.Symlink{}
-			err = file.Read(config.Fs, &actual, config.Dotfiles, "symlinks")
+			dumped, err := mgr.Dump()
 			m.Expect(err).To(m.BeNil())
 
-			m.Expect(actual).Should(m.ConsistOf(expected))
-		})
-
-		g.It("should fail if some symlink can't be created", func() {
-			config.Command = fakeWithEnvCommand("WITH_GITCONFIG=true")
-			mgr = git.NewManager(*config)
-
-			m.Expect(mgr.Dump()).NotTo(m.Succeed())
-
-			actual := []symlink.Symlink{}
-			err := file.Read(config.Fs, &actual, config.Dotfiles, "symlinks")
-			m.Expect(err).NotTo(m.BeNil())
-			m.Expect(actual).To(m.Equal([]symlink.Symlink{}))
-		})
-
-		g.It("should dump the repos cloned in the repos directory", func() {
-			repos := []string{"repo1", "repo2"}
-			expected := []git.Repo{}
-			for _, r := range repos {
-				addFakeRepo(config, r)
-				expected = append(expected, git.Repo{Name: r})
-			}
-
-			m.Expect(mgr.Dump()).To(m.Succeed())
-
-			actual := []git.Repo{}
-			err := file.Read(config.Fs, &actual, config.Dotfiles, "repos")
+			var actual git.Config
+			_, err = toml.Decode(dumped, &actual)
 			m.Expect(err).To(m.BeNil())
-			m.Expect(actual).Should(m.ConsistOf(expected))
-		})
 
-		g.It("should fail if some repo can't be dumped", func() {
-			repos := []string{"repo1", "repo2"}
-			for _, r := range repos {
-				addFakeRepo(config, r)
-			}
-
-			repoMgr.dumper = func(dir string) (*git.Repo, error) {
-				if strings.HasSuffix(dir, repos[1]) {
-					return nil, fmt.Errorf("can't dummp %s", dir)
-				}
-
-				return &git.Repo{Name: dir}, nil
-			}
-
-			m.Expect(mgr.Dump()).NotTo(m.Succeed())
-		})
-
-		g.It("should fail if the repos directory contains non-git repos", func() {
-			repoMgr.dumper = func(dir string) (*git.Repo, error) {
-				return nil, fmt.Errorf("error")
-			}
-			addFakeRepo(config, "notGit")
-
-			m.Expect(mgr.Dump()).NotTo(m.Succeed())
-		})
-
-		g.It("should ignore non-directories in the repos directory", func() {
-			_, err := config.Fs.Create(config.PunktHome + "/repos/file")
-			m.Expect(err).To(m.BeNil())
-			m.Expect(mgr.Dump()).To(m.Succeed())
-
-			actual := []git.Repo{}
-			err = file.Read(config.Fs, &actual, config.Dotfiles, "repos")
-			m.Expect(err).To(m.BeNil())
-			m.Expect(actual).Should(m.ConsistOf([]git.Repo{}))
-		})
-
-		g.It("should append the repos directory to the path", func() {
-			addFakeRepo(config, "repo")
-
-			m.Expect(mgr.Dump()).To(m.Succeed())
-			repoMgr.dumper = func(dir string) (*git.Repo, error) {
-				expected := filepath.Join(config.PunktHome, "repos", "repo")
-				m.Expect(dir).To(m.Equal(expected))
-				return &git.Repo{Name: dir}, nil
-			}
-
-			m.Expect(mgr.Dump()).To(m.Succeed())
-		})
-
-		g.It("should fail if the repos directory can't be read", func() {
-			// we have to use the real filesystem here to actually get an error
-			tmpdir, err := ioutil.TempDir("", "git-mgr")
-			m.Expect(err).To(m.BeNil())
-			config.Fs = osfs.New(tmpdir)
-
-			mgr = git.NewManager(*config)
-
-			m.Expect(mgr.Dump()).NotTo(m.Succeed())
+			m.Expect(actual.Symlinks).Should(m.ConsistOf(expected))
 		})
 	})
 
@@ -206,21 +111,10 @@ var _ = g.Describe("Git: Manager", func() {
 		})
 
 		g.It("should do nothing if the repo already exists", func() {
-			m.Expect(mgr.Dump()).To(m.Succeed())
+			dir := addFakeRepo(config, "repo")
+			m.Expect(mgr.Add(dir)).To(m.Succeed())
 
 			m.Expect(mgr.Ensure()).To(m.Succeed())
-		})
-
-		g.It("should fail if some repo can't be cloned", func() {
-			repoMgr.ensurer = func(dir string, repo git.Repo) error {
-				return fmt.Errorf("fail")
-			}
-			dir := addFakeRepo(config, "repo")
-			m.Expect(mgr.Dump()).To(m.Succeed())
-			err := util.RemoveAll(config.Fs, dir)
-			m.Expect(err).To(m.BeNil())
-
-			m.Expect(mgr.Ensure()).NotTo(m.Succeed())
 		})
 	})
 
@@ -231,7 +125,8 @@ var _ = g.Describe("Git: Manager", func() {
 
 		g.It("should succeed if the repo can be updated", func() {
 			addFakeRepo(config, "repo")
-			m.Expect(mgr.Dump()).To(m.Succeed())
+			_, err := mgr.Dump()
+			m.Expect(err).To(m.BeNil())
 
 			m.Expect(mgr.Update()).To(m.Succeed())
 		})
@@ -240,8 +135,8 @@ var _ = g.Describe("Git: Manager", func() {
 			repoMgr.updater = func(dir string) (bool, error) {
 				return false, fmt.Errorf("fail")
 			}
-			addFakeRepo(config, "repo")
-			m.Expect(mgr.Dump()).To(m.Succeed())
+			dir := addFakeRepo(config, "repo")
+			m.Expect(mgr.Add(dir)).To(m.Succeed())
 
 			m.Expect(mgr.Update()).NotTo(m.Succeed())
 		})
@@ -314,13 +209,6 @@ file:/home/.gitconfig           user.email=user.name@mail.io
 file:/home/.gitconfig           user.name=User Name
 file:/home/.config/git/config   push.default=simple
 `
-
-func unmarshalAndMarshal(out interface{}) {
-	marshalled, err := yaml.Marshal(out)
-	m.Expect(err).To(m.BeNil())
-	err = yaml.Unmarshal(marshalled, out)
-	m.Expect(err).To(m.BeNil())
-}
 
 func addFakeRepo(config *conf.Config, name string) string {
 	dir := filepath.Join(config.PunktHome, "repos", name)

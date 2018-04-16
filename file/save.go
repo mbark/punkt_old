@@ -6,15 +6,12 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-billy.v4"
-	"gopkg.in/yaml.v2"
 
 	"github.com/mbark/punkt/path"
 )
 
 // SaveToml ...
-func SaveToml(fs billy.Filesystem, content interface{}, dest, name string) error {
-	file := filepath.Join(dest, name+".toml")
-
+func SaveToml(fs billy.Filesystem, content interface{}, file string) error {
 	err := path.CreateNecessaryDirectories(fs, file)
 	if err != nil {
 		return err
@@ -29,22 +26,12 @@ func SaveToml(fs billy.Filesystem, content interface{}, dest, name string) error
 	return encoder.Encode(content)
 }
 
-// SaveYaml the given interface to the given directory with the specified name,
-// the suffix is added by default
-func SaveYaml(fs billy.Filesystem, content interface{}, dest, name string) error {
-	out, err := yaml.Marshal(&content)
-	if err != nil {
-		logrus.WithError(err).Error("Unable to marshal db to yaml")
-		return err
-	}
-
-	path := filepath.Join(dest, name+".yml")
-	s := newSaver(fs, path, out)
-	return s.Save()
-}
-
 // Save ...
 func Save(fs billy.Filesystem, content string, dest, name string) error {
+	if content == "" {
+		return nil
+	}
+
 	path := filepath.Join(dest, name)
 
 	logrus.WithFields(logrus.Fields{

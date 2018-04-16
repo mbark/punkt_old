@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	g "github.com/onsi/ginkgo"
-	m "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-billy.v4/memfs"
 
@@ -17,15 +17,16 @@ import (
 )
 
 func TestSymlink(t *testing.T) {
-	m.RegisterFailHandler(g.Fail)
-	g.RunSpecs(t, "Symlink Suite")
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Symlink Suite")
 }
 
-var _ = g.Describe("Symlink: Manager", func() {
+var _ = Describe("Symlink: Manager", func() {
 	var config *conf.Config
 	var mgr *symlink.Manager
+	var configFile string
 
-	g.BeforeEach(func() {
+	BeforeEach(func() {
 		logrus.SetLevel(logrus.PanicLevel)
 		config = &conf.Config{
 			UserHome:   "/home",
@@ -35,73 +36,67 @@ var _ = g.Describe("Symlink: Manager", func() {
 			WorkingDir: "/home",
 			Command:    fakeCommand,
 		}
+		configFile = filepath.Join(config.PunktHome, "symlinks.toml")
 
-		mgr = symlink.NewManager(*config)
+		mgr = symlink.NewManager(*config, configFile)
 	})
 
-	g.It("should do nothing and always succeed with 'dump'", func() {
+	It("should do nothing and always succeed with 'dump'", func() {
 		config.Fs = nil
-		m.Expect(mgr.Dump()).To(m.Succeed())
+		_, err := mgr.Dump()
+		Expect(err).To(Succeed())
 	})
 
-	g.It("should do nothing and always succeed with 'update'", func() {
+	It("should do nothing and always succeed with 'update'", func() {
 		config.Fs = nil
-		m.Expect(mgr.Update()).To(m.Succeed())
+		Expect(mgr.Update()).To(Succeed())
 	})
 
-	g.It("should succeed if there is an empty config file", func() {
-		err := file.SaveYaml(config.Fs, []symlink.Symlink{}, config.Dotfiles, "symlinks")
-		m.Expect(err).To(m.BeNil())
-		m.Expect(mgr.Ensure()).To(m.Succeed())
+	It("should succeed if there is an empty config file", func() {
+		err := file.SaveToml(config.Fs, symlink.Config{}, configFile)
+		Expect(err).To(BeNil())
+		Expect(mgr.Ensure()).To(Succeed())
 	})
 
-	g.It("should fail if the symlink file can't be parsed", func() {
-		err := file.Save(config.Fs, "foo", config.Dotfiles, "symlinks.yml")
-		m.Expect(err).To(m.BeNil())
-		m.Expect(mgr.Ensure()).NotTo(m.Succeed())
+	It("should add a symlink if the config file has it", func() {
+		s := createFile(config, "file")
+		err := file.SaveToml(config.Fs, symlink.Config{Symlinks: []symlink.Symlink{*s}}, configFile)
+		Expect(err).To(BeNil())
+
+		Expect(mgr.Ensure()).To(Succeed())
+		Expect(s.Exists(*config)).To(BeTrue())
 	})
 
-	g.It("should add a symlink if the config file has it", func() {
-		s := createFile(config, "/file", "/another/file")
-		err := file.SaveYaml(config.Fs, []symlink.Symlink{*s}, config.Dotfiles, "symlinks")
-		m.Expect(err).To(m.BeNil())
+	It("should try to create all symlinks even if some fail", func() {
+		failing := symlink.Symlink{
+			Target: "",
+			Link:   "",
+		}
+		success := createFile(config, "afile")
 
-		m.Expect(mgr.Ensure()).To(m.Succeed())
-		m.Expect(s.Exists()).To(m.BeTrue())
+		initial := symlink.Config{Symlinks: []symlink.Symlink{failing, *success}}
+		err := file.SaveToml(config.Fs, initial, configFile)
+		Expect(err).To(BeNil())
+
+		Expect(mgr.Ensure()).NotTo(Succeed())
+		Expect(failing.Exists(*config)).NotTo(BeTrue())
+		Expect(success.Exists(*config)).To(BeTrue())
 	})
 
-	g.It("should try to create all symlinks even if some fail", func() {
-		to := "/another/file"
-		_, err := config.Fs.Create(config.UserHome + to)
-		m.Expect(err).To(m.BeNil())
-
-		fail1 := createFile(config, "/file", to)
-		fail2 := symlink.NewSymlink(config.Fs, "/non/existant", "/some/where")
-		success := createFile(config, "/afile", "/some/where")
-
-		initial := []symlink.Symlink{*fail1, *fail2, *success}
-		err = file.SaveYaml(config.Fs, initial, config.Dotfiles, "symlinks")
-		m.Expect(err).To(m.BeNil())
-
-		m.Expect(mgr.Ensure()).NotTo(m.Succeed())
-		m.Expect(fail1.Exists()).NotTo(m.BeTrue())
-		m.Expect(fail2.Exists()).NotTo(m.BeTrue())
-		m.Expect(success.Exists()).To(m.BeTrue())
-	})
-
-	g.It("should succeed when a symlink already exists", func() {
+	It("should succeed when a symlink already exists", func() {
 		path := filepath.Join(config.UserHome, "file")
 		_, err := config.Fs.Create(path)
-		m.Expect(err).To(m.BeNil())
-		s, err := mgr.Add(path)
-		m.Expect(err).To(m.BeNil())
-		m.Expect(s.Exists()).To(m.BeTrue())
+		Expect(err).To(BeNil())
+		s, err := mgr.Add(path, "")
+		Expect(s.Ensure(*config)).To(Succeed())
+		Expect(err).To(BeNil())
+		Expect(s.Exists(*config)).To(BeTrue())
 
-		err = file.SaveYaml(config.Fs, []symlink.Symlink{*s}, config.Dotfiles, "symlinks")
-		m.Expect(err).To(m.BeNil())
+		err = file.SaveToml(config.Fs, symlink.Config{Symlinks: []symlink.Symlink{*s}}, configFile)
+		Expect(err).To(BeNil())
 
-		m.Expect(mgr.Ensure()).To(m.Succeed())
-		m.Expect(s.Exists()).To(m.BeTrue())
+		Expect(mgr.Ensure()).To(Succeed())
+		Expect(s.Exists(*config)).To(BeTrue())
 	})
 })
 
@@ -119,11 +114,10 @@ func TestAddHelperProcess(t *testing.T) {
 	os.Exit(1)
 }
 
-func createFile(config *conf.Config, from, to string) *symlink.Symlink {
-	from = config.UserHome + from
-	to = config.UserHome + to
-	_, err := config.Fs.Create(from)
-	m.Expect(err).To(m.BeNil())
+func createFile(config *conf.Config, target string) *symlink.Symlink {
+	target = filepath.Join(config.UserHome, target)
+	_, err := config.Fs.Create(target)
+	Expect(err).To(BeNil())
 
-	return symlink.NewSymlink(config.Fs, from, to)
+	return symlink.NewSymlink(*config, "", target)
 }

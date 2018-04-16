@@ -3,7 +3,7 @@ package cmd
 import (
 	"strings"
 
-	"github.com/sirupsen/logrus"
+	"github.com/mbark/punkt/mgr"
 	"github.com/spf13/cobra"
 )
 
@@ -27,12 +27,5 @@ func init() {
 }
 
 func dump(cmd *cobra.Command, args []string) {
-	for i := range managers {
-		_, err := managers[i].Dump()
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"manager": managers[i],
-			}).WithError(err).Error("Command dump failed for manager")
-		}
-	}
+	mgr.Dump(*config)
 }

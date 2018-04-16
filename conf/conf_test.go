@@ -50,7 +50,7 @@ var _ = Describe("Manager", func() {
 			savedConfig["logLevel"] = "warn"
 			savedConfig["dotfiles"] = "/some/where"
 			savedConfig["punktHome"] = home
-			err = file.SaveToml(osfs.New("/"), savedConfig, dir, "config")
+			err = file.SaveToml(osfs.New("/"), savedConfig, filepath.Join(dir, "config.toml"))
 			Expect(err).To(BeNil())
 
 			configFile = filepath.Join(dir, "config.toml")
@@ -86,7 +86,7 @@ var _ = Describe("Manager", func() {
 
 		It("should set a default for loglevel", func() {
 			savedConfig["logLevel"] = "mumbojumbo"
-			err := file.SaveToml(osfs.New("/"), savedConfig, dir, "config")
+			err := file.SaveToml(osfs.New("/"), savedConfig, filepath.Join(dir, "config.toml"))
 			Expect(err).To(BeNil())
 
 			conf.NewConfig(configFile)

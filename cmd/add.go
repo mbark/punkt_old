@@ -3,34 +3,61 @@ package cmd
 import (
 	"os"
 
+	"github.com/mbark/punkt/mgr"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-
-	"github.com/mbark/punkt/mgr/symlink"
 )
 
-// ensureCmd represents the ensure command
 var addCmd = &cobra.Command{
-	Use:   "add from [to]",
-	Short: "add file as a symlink to your dotfiles",
+	Use:   "add",
+	Short: "add a git repository or a file as a symlink",
+}
+
+var addSymlinkCmd = &cobra.Command{
+	Use:   "symlink",
+	Short: "store target in dotfile's directory and link to it",
+	Args:  cobra.RangeArgs(1, 2),
+	Run: func(cmd *cobra.Command, args []string) {
+		addSymlink(cmd, args)
+	},
+}
+
+var addGitCmd = &cobra.Command{
+	Use:   "repository",
+	Short: "add the given repository to your dotfiles-managed git repos",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		add(cmd, args)
+		addGit(cmd, args)
 	},
 }
 
 func init() {
+	addCmd.AddCommand(addSymlinkCmd)
+	addCmd.AddCommand(addGitCmd)
 	RootCmd.AddCommand(addCmd)
 }
 
-func add(cmd *cobra.Command, args []string) {
-	mgr := symlink.NewManager(*config)
-	link, err := mgr.Add(args[0])
+func addSymlink(cmd *cobra.Command, args []string) {
+	newLocation := ""
+	if len(args) == 2 {
+		newLocation = args[1]
+	}
+
+	mgr := mgr.Symlink(*config)
+	link, err := mgr.Add(args[0], newLocation)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
-			"from": link.From,
-			"to":   link.To,
-		}).WithError(err).Error("Failed to create symlink")
+			"target": link.Target,
+			"link":   link.Link,
+		}).WithError(err).Error("failed to add symlink")
+		os.Exit(1)
+	}
+}
+
+func addGit(cmd *cobra.Command, args []string) {
+	mgr := mgr.Git(*config)
+	err := mgr.Add(args[0])
+	if err != nil {
 		os.Exit(1)
 	}
 }

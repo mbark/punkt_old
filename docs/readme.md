@@ -6,7 +6,7 @@ implements the following api:
 
 * `dump(): toml`
 * `ensure(config)`
-* `update(config): toml`
+* `update(config)`
 
 `punkt` has two fundamental managers: `git` and `symlink`, which can be used by
 other manager's to ensure git repositories or symlinks exist. More about them
@@ -70,15 +70,12 @@ $ mgr.sh ensure ~/.dotfiles/mgr.toml
 allowed to both modify the system and update the configuration file if necessary.
 
 * _input_: path to the config-file
-* _output_: toml with the manager's configuration
+* _output_: nothing
 
 Example:
 
 ```console
 $ mgr.sh update ~/.dotfiles/mgr.toml
-symlinks = [ "Users/user/.Brewfile" ]
-[foo]
-this = "is other toml stuff"
 ```
 
 ## Implement your own manager

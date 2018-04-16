@@ -3,6 +3,7 @@ package git_test
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -113,8 +114,8 @@ var _ = Describe("Git: Repo Manager", func() {
 			Expect(err).To(BeNil())
 
 			expected, err := mgr.Dump("repo")
-
 			Expect(err).To(BeNil())
+
 			Expect(expected.Name).To(Equal("repo"))
 			Expect(expected.Config).To(Equal(actual))
 		})
@@ -145,15 +146,16 @@ var _ = Describe("Git: Repo Manager", func() {
 
 	Context("Ensure", func() {
 		It("should succeed if the repository already exists", func() {
-			newRepository(fs, "repo", nil)
-			repo, err := mgr.Dump("repo")
+			repoPath := filepath.Join(tmpdir, "repo")
+			newRepository(fs, repoPath, nil)
+			repo, err := mgr.Dump(repoPath)
 			Expect(err).To(BeNil())
 
-			Expect(mgr.Ensure("repo", *repo)).To(Succeed())
+			Expect(mgr.Ensure(*repo)).To(Succeed())
 		})
 
 		It("should clone the repository if it doesn't exist", func() {
-			name := "repo"
+			name := filepath.Join(tmpdir, "repo")
 			origin, path := newRepository(fs, "origin", nil)
 			addCommit(origin)
 			newRepository(fs, name, &config.RemoteConfig{
@@ -167,7 +169,7 @@ var _ = Describe("Git: Repo Manager", func() {
 			err = util.RemoveAll(fs, name)
 			Expect(err).To(BeNil())
 
-			Expect(mgr.Ensure(name, *repo)).To(Succeed())
+			Expect(mgr.Ensure(*repo)).To(Succeed())
 
 			repository := openRepository(fs, name)
 			Expect(repository).NotTo(BeNil())
@@ -186,11 +188,13 @@ var _ = Describe("Git: Repo Manager", func() {
 			err = util.RemoveAll(fs, name)
 			Expect(err).To(BeNil())
 
-			Expect(mgr.Ensure(name, *repo)).NotTo(Succeed())
+			Expect(mgr.Ensure(*repo)).NotTo(Succeed())
 		})
 
 		It("should fail if storage can't be allocated", func() {
-			Expect(mgr.Ensure("../../", git.Repo{})).NotTo(Succeed())
+			Expect(mgr.Ensure(git.Repo{
+				Path: "../../",
+			})).NotTo(Succeed())
 		})
 	})
 

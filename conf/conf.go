@@ -101,8 +101,10 @@ func configureLogFiles() {
 }
 
 func readManagers(fs billy.Filesystem) map[string]map[string]string {
+	path := filepath.Join(viper.GetString("punktHome"), "managers.toml")
+
 	var mgrs map[string]map[string]string
-	err := file.ReadToml(fs, &mgrs, viper.GetString("punktHome"), "managers")
+	err := file.ReadToml(fs, &mgrs, path)
 	if err != nil {
 		logrus.WithError(err).Error("Unable to read managers.toml")
 	} else {

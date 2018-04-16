@@ -2,6 +2,7 @@ package file
 
 import (
 	"bytes"
+	"errors"
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
@@ -10,8 +11,10 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func open(fs billy.Filesystem, dest, name string) (*bytes.Buffer, error) {
-	path := filepath.Join(dest, name)
+// ErrNoSuchFile is returned if the file to read from can't be found
+var ErrNoSuchFile = errors.New("file doesn't exist")
+
+func open(fs billy.Filesystem, path string) (*bytes.Buffer, error) {
 	logger := logrus.WithFields(logrus.Fields{
 		"file": path,
 	})
@@ -35,7 +38,7 @@ func open(fs billy.Filesystem, dest, name string) (*bytes.Buffer, error) {
 
 // Read the file in the given directory and marshal it to the given struct
 func Read(fs billy.Filesystem, out interface{}, dest, name string) error {
-	buf, err := open(fs, dest, name+".yml")
+	buf, err := open(fs, filepath.Join(dest, name+".yml"))
 	if err != nil {
 		return err
 	}
@@ -53,8 +56,13 @@ func Read(fs billy.Filesystem, out interface{}, dest, name string) error {
 }
 
 // ReadToml the file in the given directory and marshal it to the given struct
-func ReadToml(fs billy.Filesystem, out interface{}, dest, name string) error {
-	buf, err := open(fs, dest, name+".toml")
+func ReadToml(fs billy.Filesystem, out interface{}, file string) error {
+	_, err := fs.Stat(file)
+	if err != nil {
+		return ErrNoSuchFile
+	}
+
+	buf, err := open(fs, file)
 	if err != nil {
 		return err
 	}
@@ -62,8 +70,7 @@ func ReadToml(fs billy.Filesystem, out interface{}, dest, name string) error {
 	err = toml.Unmarshal(buf.Bytes(), out)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
-			"dir":  dest,
-			"name": name,
+			"file": file,
 		}).WithError(err).Error("Unable to unmarshal file to yaml")
 		return err
 	}

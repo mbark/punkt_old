@@ -1,136 +1,166 @@
 package symlink
 
 import (
-	"fmt"
+	"errors"
+	"path/filepath"
+	"strings"
 
 	"github.com/sirupsen/logrus"
-	"gopkg.in/src-d/go-billy.v4"
 
 	"github.com/mbark/punkt/conf"
-	"github.com/mbark/punkt/file"
 	"github.com/mbark/punkt/path"
 )
 
-// Manager ...
-type Manager struct {
-	config conf.Config
-}
-
-// NewManager ...
-func NewManager(c conf.Config) *Manager {
-	return &Manager{
-		config: c,
-	}
-}
+var (
+	// ErrNonHomeRelativeTarget is returned if a target has no given link and is outside of the user's home directory
+	ErrNonHomeRelativeTarget = errors.New("non-home relative target given without specific link location")
+)
 
 // Symlink describes a symlink, i.e. what it links from and what it links to
 type Symlink struct {
-	fs   billy.Filesystem
-	From string
-	To   string
+	Target string
+	Link   string
 }
 
 // NewSymlink creates a new symlink
-func NewSymlink(fs billy.Filesystem, from, to string) *Symlink {
+func NewSymlink(config conf.Config, target, link string) *Symlink {
+	logger := logrus.WithFields(logrus.Fields{
+		"target": target,
+		"link":   link,
+	})
+	logger.Debug("creating symlink")
+
+	if target == "" && link != "" {
+		logger.Debug("empty target with non-empty link, deriving target")
+		target, _ = deriveLink(link, config.UserHome, config.Dotfiles)
+	}
+
+	if target != "" && link == "" {
+		logger.Debug("empty link with non-empty target, deriving link")
+		link, _ = deriveLink(target, config.Dotfiles, config.UserHome)
+	}
+
 	return &Symlink{
-		fs:   fs,
-		From: from,
-		To:   to,
+		Target: path.ExpandHome(target, config.UserHome),
+		Link:   path.ExpandHome(link, config.UserHome),
 	}
 }
 
-func (symlink Symlink) expand(home string) *Symlink {
-	return NewSymlink(symlink.fs, path.ExpandHome(symlink.From, home), path.ExpandHome(symlink.To, home))
+// Expand ...
+func (symlink *Symlink) Expand(home string) {
+	symlink.Target = path.ExpandHome(symlink.Target, home)
+	symlink.Link = path.ExpandHome(symlink.Link, home)
 }
 
-func (symlink Symlink) unexpend(home string) *Symlink {
-	return NewSymlink(symlink.fs, path.UnexpandHome(symlink.From, home), path.UnexpandHome(symlink.To, home))
+// Unexpand ...
+func (symlink *Symlink) Unexpand(home string) {
+	symlink.Target = path.UnexpandHome(symlink.Target, home)
+	symlink.Link = path.UnexpandHome(symlink.Link, home)
 }
 
-// Create will construct the corresponding symlink. Returns true if the symlink
-// was successfully created, otherwise false.
-func (symlink Symlink) Create() error {
+// DeriveLink ...
+func deriveLink(target, targetDir, linkDir string) (string, error) {
+	relToDotfiles, err := filepath.Rel(targetDir, target)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"target":    target,
+			"targetDir": targetDir,
+		}).WithError(err).Error("unable to make target relative to target dir")
+		return "", err
+	}
+
+	if strings.HasPrefix(relToDotfiles, "..") {
+		return "", ErrNonHomeRelativeTarget
+	}
+
+	return filepath.Join(linkDir, relToDotfiles), nil
+}
+
+// Ensure the existence of the symlink. If the symlink already
+// exists this does nothing. Otherwise it will create a symlink from
+// link to target.
+//
+// If the given symlink has an existing file at link but not target this
+// will be treated as a file to add, meaning the file at link will be moved
+// to the target path before creating the symlink from link to target.
+func (symlink *Symlink) Ensure(config conf.Config) error {
 	logger := logrus.WithFields(logrus.Fields{
-		"to":   symlink.To,
-		"from": symlink.From,
+		"link":   symlink.Link,
+		"target": symlink.Target,
 	})
 
-	_, err := symlink.fs.Lstat(symlink.From)
-	if err != nil {
-		return err
+	if symlink.Exists(config) {
+		return nil
 	}
 
-	err = path.CreateNecessaryDirectories(symlink.fs, symlink.To)
-	if err != nil {
-		return err
+	linkExists := false
+	if _, err := config.Fs.Stat(symlink.Link); err == nil {
+		linkExists = true
 	}
 
-	logger.Info("Creating symlink")
-	return symlink.fs.Symlink(symlink.From, symlink.To)
-}
-
-// Exists returns true if the symlink already exists
-func (symlink Symlink) Exists() bool {
-	logger := logrus.WithFields(logrus.Fields{
-		"fs":   symlink.fs,
-		"to":   symlink.To,
-		"from": symlink.From,
-	})
-	logger.Debug("Checking if symlink exists")
-
-	if _, err := symlink.fs.Lstat(symlink.To); err != nil {
-		logger.WithError(err).Debug("Failed to Lstat file")
-		return false
-	}
-
-	path, err := symlink.fs.Readlink(symlink.To)
-	if err != nil {
-		logger.WithError(err).Debug("Unable to readlink")
-		return false
-	}
-
-	return path == symlink.From
-}
-
-// Dump ...
-func (mgr Manager) Dump() error { return nil }
-
-// Update ...
-func (mgr Manager) Update() error { return nil }
-
-// Ensure goes through the list of symlinks ensuring they exist
-func (mgr Manager) Ensure() error {
-	symlinks := []Symlink{}
-	err := file.Read(mgr.config.Fs, &symlinks, mgr.config.Dotfiles, "symlinks")
-	if err != nil {
-		return err
-	}
-
-	failed := []Symlink{}
-	for _, symlink := range symlinks {
-		s := Symlink{
-			To:   symlink.To,
-			From: symlink.From,
-			fs:   mgr.config.Fs,
-		}.expand(mgr.config.UserHome)
-
-		if s.Exists() {
-			logrus.WithFields(logrus.Fields{
-				"from": s.From,
-				"to":   s.To,
-			}).Debug("Symlink already exists, not creating")
-		} else {
-			err := s.Create()
+	if linkExists {
+		if symlink.Target == "" {
+			logger.Debug("no target given, deriving from link")
+			target, err := deriveLink(symlink.Link, config.UserHome, config.PunktHome)
 			if err != nil {
-				logrus.WithField("symlink", symlink).WithError(err).Error("Failed to create symlink")
-				failed = append(failed, symlink)
+				return err
+			}
+
+			symlink.Target = target
+			if symlink.Exists(config) {
+				return nil
+			}
+		}
+
+		targetExists := false
+		if _, err := config.Fs.Stat(symlink.Target); err == nil {
+			targetExists = true
+		}
+
+		if !targetExists {
+			err := path.CreateNecessaryDirectories(config.Fs, symlink.Target)
+			if err != nil {
+				return err
+			}
+
+			logger.Debug("target doesn't exist, assuming link is the target")
+			err = config.Fs.Rename(symlink.Link, symlink.Target)
+			if err != nil {
+				logrus.WithFields(logrus.Fields{
+					"symlink": symlink,
+				}).WithError(err).Error("unable to move link to target location")
+				return err
 			}
 		}
 	}
 
-	if len(failed) > 0 {
-		return fmt.Errorf("The following symlinks could not be created: %v", failed)
+	err := path.CreateNecessaryDirectories(config.Fs, symlink.Link)
+	if err != nil {
+		return err
 	}
 
-	return nil
+	logger.Info("creating symlink")
+	return config.Fs.Symlink(symlink.Target, symlink.Link)
+}
+
+// Exists returns true if there exists a symlink at Link pointing to Target
+func (symlink Symlink) Exists(config conf.Config) bool {
+	logger := logrus.WithFields(logrus.Fields{
+		"target": symlink.Target,
+		"link":   symlink.Link,
+	})
+	logger.Debug("checking if symlink exists")
+
+	if _, err := config.Fs.Lstat(symlink.Link); err != nil {
+		logger.WithError(err).Debug("failed to Lstat link")
+		return false
+	}
+
+	path, err := config.Fs.Readlink(symlink.Link)
+	if err != nil {
+		logger.WithError(err).Debug("unable to readlink")
+		return false
+	}
+
+	return path == symlink.Target
 }

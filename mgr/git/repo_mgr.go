@@ -13,7 +13,7 @@ import (
 // RepoManager ...
 type RepoManager interface {
 	Dump(dir string) (*Repo, error)
-	Ensure(dir string, repo Repo) error
+	Ensure(repo Repo) error
 	Update(dir string) (bool, error)
 }
 
@@ -73,25 +73,34 @@ func (mgr GoGitRepoManager) Dump(dir string) (*Repo, error) {
 		return nil, err
 	}
 
+	dir, err = filepath.Abs(dir)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Repo{
 		Name:   filepath.Base(dir),
 		Config: config,
+		Path:   dir,
 	}, nil
 }
 
 // Ensure ...
-func (mgr GoGitRepoManager) Ensure(dir string, repo Repo) error {
-	logger := logrus.WithField("repo", repo.Name)
+func (mgr GoGitRepoManager) Ensure(repo Repo) error {
+	logger := logrus.WithFields(logrus.Fields{
+		"repo": repo.Name,
+		"path": repo.Path,
+	})
 	logger.Info("Ensuring repository exists")
 
-	if _, ok := mgr.open(dir); ok == nil {
+	if _, ok := mgr.open(repo.Path); ok == nil {
 		logger.Info("Repository already exists")
 		return nil
 	}
 
-	storage, worktree, err := mgr.storage(dir)
+	storage, worktree, err := mgr.storage(repo.Path)
 	if err != nil {
-		logger.WithError(err).Error("Unable to allocate storage for repository")
+		logger.WithError(err).Error("unable to allocate storage for repository")
 		return err
 	}
 
@@ -103,13 +112,13 @@ func (mgr GoGitRepoManager) Ensure(dir string, repo Repo) error {
 		URL: remote,
 	})
 	if err != nil {
-		logger.WithError(err).Error("Unable to clone repository")
+		logger.WithError(err).Error("unable to clone repository")
 		return err
 	}
 
 	err = repository.Storer.SetConfig(repo.Config)
 	if err != nil {
-		logger.WithError(err).Error("Unable to set configuration for repository")
+		logger.WithError(err).Error("unable to set configuration for repository")
 		return err
 	}
 
@@ -123,13 +132,13 @@ func (mgr GoGitRepoManager) Update(dir string) (bool, error) {
 
 	repository, err := mgr.open(dir)
 	if err != nil {
-		logger.WithError(err).Error("Unable to open git repository")
+		logger.WithError(err).Error("unable to open git repository")
 		return false, err
 	}
 
 	w, err := repository.Worktree()
 	if err != nil {
-		logger.WithError(err).Error("Unable to get worktree for repository")
+		logger.WithError(err).Error("unable to get worktree for repository")
 		return false, err
 	}
 
@@ -137,10 +146,10 @@ func (mgr GoGitRepoManager) Update(dir string) (bool, error) {
 	err = w.Pull(&git.PullOptions{RemoteName: git.DefaultRemoteName})
 	if err != nil {
 		if err == git.NoErrAlreadyUpToDate {
-			logger.Info("Repository is already up to date")
+			logger.Info("repository is already up to date")
 			updated = false
 		} else {
-			logger.WithError(err).Error("Unable to update repository")
+			logger.WithError(err).Error("unable to update repository")
 			return false, err
 		}
 	}

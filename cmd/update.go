@@ -21,7 +21,7 @@ func init() {
 // Update ...
 func update() {
 	for i := range managers {
-		_, err := managers[i].Update()
+		err := managers[i].Update()
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"manager": managers[i],
