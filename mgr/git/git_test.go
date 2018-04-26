@@ -14,6 +14,7 @@ import (
 	"gopkg.in/src-d/go-billy.v4/memfs"
 
 	"github.com/mbark/punkt/conf"
+	"github.com/mbark/punkt/file"
 	"github.com/mbark/punkt/mgr/git"
 	"github.com/mbark/punkt/mgr/symlink"
 )
@@ -76,18 +77,26 @@ var _ = g.Describe("Git: Manager", func() {
 		logrus.SetLevel(logrus.PanicLevel)
 	})
 
+	g.It("should be called git", func() {
+		m.Expect(mgr.Name()).To(m.Equal("git"))
+	})
+
 	var _ = g.Context("when running Dump", func() {
-		g.It("should return toml with the symlinks", func() {
+		g.It("should return valid toml", func() {
+			dumped, err := mgr.Dump()
+			m.Expect(err).To(m.BeNil())
+
+			var actual git.Config
+			_, err = toml.Decode(dumped, &actual)
+			m.Expect(err).To(m.BeNil())
+
+			m.Expect(actual.Symlinks).Should(m.BeEmpty())
+			m.Expect(actual.Repositories).Should(m.BeEmpty())
+		})
+
+		g.It("should contain the files to symlink", func() {
 			config.Command = fakeWithEnvCommand("WITH_GITCONFIG=true")
 			mgr = git.NewManager(*config, configFile)
-
-			file1 := filepath.Join(config.UserHome, ".gitconfig")
-			file2 := filepath.Join(config.UserHome, ".config", "git", "config")
-
-			_, err := config.Fs.Create(file1)
-			m.Expect(err).To(m.BeNil())
-			_, err = config.Fs.Create(file2)
-			m.Expect(err).To(m.BeNil())
 
 			expected := []symlink.Symlink{
 				{Target: "~/.dotfiles/.gitconfig", Link: "~/.gitconfig"},
@@ -116,6 +125,16 @@ var _ = g.Describe("Git: Manager", func() {
 
 			m.Expect(mgr.Ensure()).To(m.Succeed())
 		})
+
+		g.It("should fail if some repos can't be ensured", func() {
+			repoMgr.ensurer = func(repo git.Repo) error {
+				return fmt.Errorf("fail")
+			}
+			dir := addFakeRepo(config, "repo")
+			m.Expect(mgr.Add(dir)).To(m.Succeed())
+
+			m.Expect(mgr.Ensure()).NotTo(m.Succeed())
+		})
 	})
 
 	var _ = g.Context("when running Update", func() {
@@ -139,6 +158,66 @@ var _ = g.Describe("Git: Manager", func() {
 			m.Expect(mgr.Add(dir)).To(m.Succeed())
 
 			m.Expect(mgr.Update()).NotTo(m.Succeed())
+		})
+	})
+
+	var _ = g.Context("when getting Symlinks", func() {
+		g.It("should return the saved symlinks", func() {
+			expected := []symlink.Symlink{
+				{Target: "~/.dotfiles/.gitconfig", Link: "~/.gitconfig"},
+				{Target: "~/.dotfiles/.config/git/config", Link: "~/.config/git/config"},
+			}
+
+			err := file.SaveToml(config.Fs, &git.Config{Symlinks: expected}, configFile)
+			m.Expect(err).To(m.BeNil())
+
+			actual, err := mgr.Symlinks()
+			m.Expect(err).To(m.BeNil())
+
+			m.Expect(actual).Should(m.ConsistOf(expected))
+		})
+
+		g.It("should return an empty list if the config doesn't exit", func() {
+			actual, err := mgr.Symlinks()
+			m.Expect(err).To(m.BeNil())
+			m.Expect(actual).To(m.BeEmpty())
+		})
+
+		g.It("should return an error if the file can't be read", func() {
+			err := file.Save(config.Fs, "foo", configFile)
+			m.Expect(err).To(m.BeNil())
+
+			actual, err := mgr.Symlinks()
+			m.Expect(actual).To(m.BeNil())
+			m.Expect(err).NotTo(m.BeNil())
+		})
+	})
+
+	var _ = g.Context("when removing a git repo", func() {
+		g.It("should be possible to remove a repo", func() {
+			repoPath := filepath.Join(config.UserHome, "repo")
+
+			c := git.Config{Repositories: []git.Repo{{Path: repoPath}}}
+			err := file.SaveToml(config.Fs, &c, configFile)
+			m.Expect(err).To(m.BeNil())
+
+			m.Expect(mgr.Remove(repoPath)).To(m.Succeed())
+
+			var actual git.Config
+			err = file.ReadToml(config.Fs, &actual, configFile)
+			m.Expect(err).To(m.BeNil())
+
+			m.Expect(actual.Repositories).To(m.BeEmpty())
+		})
+
+		g.It("should return an error if the repo doesn't exist", func() {
+			repoPath := filepath.Join(config.UserHome, "repo")
+			c := git.Config{Repositories: []git.Repo{{Path: repoPath}}}
+			err := file.SaveToml(config.Fs, &c, configFile)
+			m.Expect(err).To(m.BeNil())
+
+			err = mgr.Remove("/non/existant")
+			m.Expect(err).To(m.Equal(git.ErrRepositoryNotFoundInConfig))
 		})
 	})
 })

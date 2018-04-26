@@ -40,7 +40,7 @@ func Dump(c conf.Config) error {
 			return err
 		}
 
-		err = file.Save(c.Fs, out, c.PunktHome, mgrs[i].Name()+".toml")
+		err = file.Save(c.Fs, out, configFile(c, mgrs[i].Name()))
 		if err != nil {
 			return err
 		}
