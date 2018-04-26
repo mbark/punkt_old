@@ -112,6 +112,20 @@ var _ = g.Describe("Git: Manager", func() {
 
 			m.Expect(actual.Symlinks).Should(m.ConsistOf(expected))
 		})
+
+		g.It("should return no symlinks if finding the config files fails", func() {
+			config.Command = fakeWithEnvCommand("FAILING=true")
+			mgr = git.NewManager(*config, configFile)
+
+			dumped, err := mgr.Dump()
+			m.Expect(err).To(m.BeNil())
+
+			var actual git.Config
+			_, err = toml.Decode(dumped, &actual)
+			m.Expect(err).To(m.BeNil())
+
+			m.Expect(actual.Symlinks).Should(m.BeEmpty())
+		})
 	})
 
 	var _ = g.Context("when running Ensure", func() {

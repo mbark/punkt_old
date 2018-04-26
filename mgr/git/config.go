@@ -11,7 +11,7 @@ import (
 
 var gitConfigFile = regexp.MustCompile(`file\:(?P<File>.*?)\s.*`)
 
-func globalConfigFiles(command func(string, ...string) *exec.Cmd) ([]string, error) {
+func globalConfigFiles(command func(string, ...string) *exec.Cmd) []string {
 	// this is currently not suppported via the git library
 	cmd := command("git", "config", "--list", "--show-origin", "--global")
 	stdout, stderr := run.CaptureOutput(cmd)
@@ -20,8 +20,8 @@ func globalConfigFiles(command func(string, ...string) *exec.Cmd) ([]string, err
 		logrus.WithFields(logrus.Fields{
 			"stdout": stdout.String(),
 			"stderr": stderr.String(),
-		}).WithError(err).Error("Failed to run git config")
-		return []string{}, err
+		}).WithError(err).Error("Failed to find git config files")
+		return []string{}
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -45,5 +45,5 @@ func globalConfigFiles(command func(string, ...string) *exec.Cmd) ([]string, err
 		files = append(files, key)
 	}
 
-	return files, nil
+	return files
 }

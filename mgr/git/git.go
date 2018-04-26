@@ -142,11 +142,7 @@ func (mgr Manager) Ensure() error {
 
 // Dump ...
 func (mgr Manager) Dump() (string, error) {
-	configFiles, err := globalConfigFiles(mgr.config.Command)
-	if err != nil {
-		logrus.WithError(err).Error("unable to find and save git configuration files")
-		return "", err
-	}
+	configFiles := globalConfigFiles(mgr.config.Command)
 
 	var symlinks []symlink.Symlink
 	for _, f := range configFiles {
@@ -167,7 +163,7 @@ func (mgr Manager) Dump() (string, error) {
 
 	var out bytes.Buffer
 	encoder := toml.NewEncoder(&out)
-	err = encoder.Encode(config)
+	err := encoder.Encode(config)
 
 	return out.String(), err
 }
