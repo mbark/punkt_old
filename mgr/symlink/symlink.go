@@ -21,7 +21,6 @@ type LinkManager interface {
 	New(target, link string) *Symlink
 	Remove(string) (*Symlink, error)
 	Ensure(symlink *Symlink) error
-	Exists(symlink *Symlink) bool
 	Unexpand(symlink Symlink) *Symlink
 	Expand(symlink Symlink) *Symlink
 }
@@ -94,21 +93,21 @@ func (mgr symlinkManager) Ensure(symlink *Symlink) error {
 		"target": symlink.Target,
 	})
 
-	if mgr.Exists(symlink) {
+	if mgr.exists(symlink) {
 		return nil
 	}
 
-	linkExists := false
+	linkexists := false
 	if _, err := mgr.config.Fs.Stat(symlink.Link); err == nil {
-		linkExists = true
+		linkexists = true
 	}
 
-	targetExists := false
+	targetexists := false
 	if _, err := mgr.config.Fs.Stat(symlink.Target); err == nil {
-		targetExists = true
+		targetexists = true
 	}
 
-	if linkExists && !targetExists {
+	if linkexists && !targetexists {
 		err := path.CreateNecessaryDirectories(mgr.config.Fs, symlink.Target)
 		if err != nil {
 			return err
@@ -133,8 +132,8 @@ func (mgr symlinkManager) Ensure(symlink *Symlink) error {
 	return mgr.config.Fs.Symlink(symlink.Target, symlink.Link)
 }
 
-// Exists returns true if there exists a symlink at Link pointing to Target
-func (mgr symlinkManager) Exists(symlink *Symlink) bool {
+// exists returns true if there exists a symlink at Link pointing to Target
+func (mgr symlinkManager) exists(symlink *Symlink) bool {
 	logger := logrus.WithFields(logrus.Fields{
 		"target": symlink.Target,
 		"link":   symlink.Link,

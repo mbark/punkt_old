@@ -134,6 +134,16 @@ var _ = Describe("Symlink: Manager", func() {
 			linkMgr.AssertCalled(GinkgoT(), "Ensure", mock.Anything)
 		})
 
+		It("should fail if the symlink can't be ensured", func() {
+			linkMgr = new(symlinktest.MockLinkManager)
+			mgr.LinkManager = linkMgr
+			linkMgr.On("New", mock.Anything, mock.Anything).Return(new(symlink.Symlink))
+			linkMgr.On("Ensure", mock.Anything).Return(fmt.Errorf("fail"))
+
+			_, err := mgr.Add("/target", "/location")
+			Expect(err).NotTo(BeNil())
+		})
+
 		It("should save the symlink added", func() {
 			s, err := mgr.Add("/a/file", "/some/where")
 			Expect(err).To(BeNil())
@@ -157,6 +167,14 @@ var _ = Describe("Symlink: Manager", func() {
 
 			Expect(c.Symlinks).To(ConsistOf(*s))
 		})
+
+		It("should fail if the stored config can't be parsed", func() {
+			err := file.Save(config.Fs, "foo", configFile)
+			Expect(err).To(BeNil())
+
+			_, err = mgr.Add("/target", "/location")
+			Expect(err).NotTo(BeNil())
+		})
 	})
 
 	var _ = Context("when running Remove", func() {
@@ -175,8 +193,16 @@ var _ = Describe("Symlink: Manager", func() {
 			Expect(c.Symlinks).To(BeEmpty())
 		})
 
-		It("should succeed even if the symlink isn't stored in the config", func() {
+		It("should succeed if the config file doesn't exist", func() {
 			linkMgr.On("Remove", mock.Anything).Return(new(symlink.Symlink), nil)
+			Expect(mgr.Remove("link")).To(Succeed())
+		})
+
+		It("should succeed if the symlink isn't stored in the config file", func() {
+			linkMgr.On("Remove", mock.Anything).Return(new(symlink.Symlink), nil)
+			_, err := mgr.Add("/a/file", "/some/where")
+			Expect(err).To(BeNil())
+
 			Expect(mgr.Remove("link")).To(Succeed())
 		})
 

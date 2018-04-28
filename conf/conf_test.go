@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
+	billy "gopkg.in/src-d/go-billy.v4"
 	"gopkg.in/src-d/go-billy.v4/osfs"
 
 	"github.com/mbark/punkt/conf"
@@ -36,6 +37,7 @@ var _ = Describe("Manager", func() {
 		var home string
 		var savedConfig map[string]string
 		var configFile string
+		var fs billy.Filesystem
 
 		BeforeEach(func() {
 			d, err := ioutil.TempDir("", "conf")
@@ -46,11 +48,13 @@ var _ = Describe("Manager", func() {
 			home, err = ioutil.TempDir("", "conf")
 			Expect(err).To(BeNil())
 
+			fs = osfs.New("/")
+
 			savedConfig = make(map[string]string)
 			savedConfig["logLevel"] = "warn"
 			savedConfig["dotfiles"] = "/some/where"
 			savedConfig["punktHome"] = home
-			err = file.SaveToml(osfs.New("/"), savedConfig, filepath.Join(dir, "config.toml"))
+			err = file.SaveToml(fs, savedConfig, filepath.Join(dir, "config.toml"))
 			Expect(err).To(BeNil())
 
 			configFile = filepath.Join(dir, "config.toml")
@@ -86,15 +90,24 @@ var _ = Describe("Manager", func() {
 
 		It("should set a default for loglevel", func() {
 			savedConfig["logLevel"] = "mumbojumbo"
-			err := file.SaveToml(osfs.New("/"), savedConfig, filepath.Join(dir, "config.toml"))
+			err := file.SaveToml(fs, savedConfig, filepath.Join(dir, "config.toml"))
 			Expect(err).To(BeNil())
 
 			conf.NewConfig(configFile)
 			Expect(logrus.GetLevel()).To(Equal(logrus.InfoLevel))
 		})
 
-		It("should fail if the give path can't be made absolute", func() {
+		It("should read the managers.toml file for manager configuration", func() {
+			logrus.SetLevel(logrus.DebugLevel)
+			mgrs := make(map[string]map[string]string)
+			mgrs["foo"] = make(map[string]string)
+			mgrs["foo"]["command"] = "bar"
 
+			err := file.SaveToml(fs, mgrs, filepath.Join(home, "managers.toml"))
+			Expect(err).To(BeNil())
+
+			config := conf.NewConfig(configFile)
+			Expect(config.Managers).To(Equal(mgrs))
 		})
 	})
 })

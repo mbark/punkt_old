@@ -63,10 +63,16 @@ var _ = Describe("Symlink: Link Manager", func() {
 			Expect(s.Link).To(Equal(""))
 		})
 
-		It("should keep the empty string if the target can't be derived", func() {
-			s := mgr.New("", "/link")
+		It("should keep an empty string if the link can't be made relative", func() {
+			s := mgr.New("", ".")
 
 			Expect(s.Target).To(Equal(""))
+		})
+
+		It("should keep an empty string if the target can't be made relative", func() {
+			s := mgr.New(".", "")
+
+			Expect(s.Link).To(Equal(""))
 		})
 	})
 
@@ -155,35 +161,6 @@ var _ = Describe("Symlink: Link Manager", func() {
 
 			_, err := config.Fs.Readlink("/link")
 			Expect(err).To(BeNil())
-		})
-	})
-
-	var _ = Describe("when running Exists", func() {
-		var link string
-
-		BeforeEach(func() {
-			link = filepath.Join(config.UserHome, "file")
-			_, err := config.Fs.Create(link)
-			Expect(err).To(BeNil())
-		})
-
-		It("should say it exists if it does", func() {
-			s := mgr.New("", link)
-			Expect(mgr.Ensure(s)).To(Succeed())
-
-			Expect(mgr.Exists(s)).To(BeTrue())
-		})
-
-		It("should say it doesn't exist if doesn't", func() {
-			Expect(mgr.Exists(&symlink.Symlink{Target: "/file", Link: "/link"})).NotTo(BeTrue())
-		})
-
-		It("should say it doesn't exist if the link points somehwere else", func() {
-			s1 := mgr.New("", link)
-			s2 := mgr.New("/some/where", link)
-			Expect(mgr.Ensure(s2)).To(Succeed())
-
-			Expect(mgr.Exists(s1)).NotTo(BeTrue())
 		})
 	})
 
