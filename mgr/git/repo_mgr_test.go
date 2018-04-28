@@ -95,7 +95,7 @@ var _ = Describe("Git: Repo Manager", func() {
 		tmpdir = dir
 		fs = osfs.New(tmpdir)
 
-		mgr = git.NewGoGitRepoManager(fs)
+		mgr = git.NewRepoManager(fs)
 	})
 
 	AfterEach(func() {

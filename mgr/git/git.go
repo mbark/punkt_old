@@ -26,6 +26,7 @@ type Repo struct {
 
 // Manager ...
 type Manager struct {
+	LinkManager symlink.LinkManager
 	RepoManager RepoManager
 	config      conf.Config
 	configFile  string
@@ -40,7 +41,8 @@ type Config struct {
 // NewManager ...
 func NewManager(c conf.Config, configFile string) *Manager {
 	return &Manager{
-		RepoManager: NewGoGitRepoManager(c.Fs),
+		LinkManager: symlink.NewLinkManager(c),
+		RepoManager: NewRepoManager(c.Fs),
 		config:      c,
 		configFile:  configFile,
 	}
@@ -146,9 +148,9 @@ func (mgr Manager) Dump() (string, error) {
 
 	var symlinks []symlink.Symlink
 	for _, f := range configFiles {
-		s := symlink.NewSymlink(mgr.config, "", f)
-		s.Unexpand(mgr.config.UserHome)
-		symlinks = append(symlinks, *s)
+		s := mgr.LinkManager.New("", f)
+		unexpanded := mgr.LinkManager.Unexpand(*s)
+		symlinks = append(symlinks, *unexpanded)
 
 		logrus.WithFields(logrus.Fields{
 			"configFile": f,

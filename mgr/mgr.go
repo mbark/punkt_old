@@ -68,10 +68,12 @@ func Ensure(c conf.Config) error {
 			return err
 		}
 
+		linkManager := symlink.NewLinkManager(c)
+
 		logger = logger.WithField("symlinks", symlinks)
 		for i := range symlinks {
-			symlinks[i].Expand(c.UserHome)
-			err = symlinks[i].Ensure(c)
+			expanded := linkManager.Expand(symlinks[i])
+			err = linkManager.Ensure(expanded)
 			if err != nil {
 				logger.WithField("symlink", symlinks[i]).WithError(err).Error("unable to ensure symlink")
 				return err

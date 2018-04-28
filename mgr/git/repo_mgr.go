@@ -18,18 +18,18 @@ type RepoManager interface {
 }
 
 // GoGitRepoManager ...
-type GoGitRepoManager struct {
+type goGitRepoManager struct {
 	fs billy.Filesystem
 }
 
-// NewGoGitRepoManager ...
-func NewGoGitRepoManager(fs billy.Filesystem) GoGitRepoManager {
-	return GoGitRepoManager{
+// NewRepoManager ...
+func NewRepoManager(fs billy.Filesystem) RepoManager {
+	return goGitRepoManager{
 		fs: fs,
 	}
 }
 
-func (mgr GoGitRepoManager) storage(dir string) (storage.Storer, billy.Filesystem, error) {
+func (mgr goGitRepoManager) storage(dir string) (storage.Storer, billy.Filesystem, error) {
 	logrus.WithField("dir", dir).Debug("Constructing storage for directory")
 	worktree, err := mgr.fs.Chroot(dir)
 	if err != nil {
@@ -49,7 +49,7 @@ func (mgr GoGitRepoManager) storage(dir string) (storage.Storer, billy.Filesyste
 	return storage, worktree, nil
 }
 
-func (mgr GoGitRepoManager) open(dir string) (*git.Repository, error) {
+func (mgr goGitRepoManager) open(dir string) (*git.Repository, error) {
 	storage, worktree, err := mgr.storage(dir)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
@@ -62,7 +62,7 @@ func (mgr GoGitRepoManager) open(dir string) (*git.Repository, error) {
 }
 
 // Dump ...
-func (mgr GoGitRepoManager) Dump(dir string) (*Repo, error) {
+func (mgr goGitRepoManager) Dump(dir string) (*Repo, error) {
 	repository, err := mgr.open(dir)
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func (mgr GoGitRepoManager) Dump(dir string) (*Repo, error) {
 }
 
 // Ensure ...
-func (mgr GoGitRepoManager) Ensure(repo Repo) error {
+func (mgr goGitRepoManager) Ensure(repo Repo) error {
 	logger := logrus.WithFields(logrus.Fields{
 		"repo": repo.Name,
 		"path": repo.Path,
@@ -126,7 +126,7 @@ func (mgr GoGitRepoManager) Ensure(repo Repo) error {
 }
 
 // Update ...
-func (mgr GoGitRepoManager) Update(dir string) (bool, error) {
+func (mgr goGitRepoManager) Update(dir string) (bool, error) {
 	logger := logrus.WithField("repo", dir)
 	logger.Info("Updating repository")
 

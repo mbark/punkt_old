@@ -12,8 +12,15 @@ import (
 
 // Manager ...
 type Manager struct {
-	configFile string
-	config     conf.Config
+	LinkManager LinkManager
+	configFile  string
+	config      conf.Config
+}
+
+// Symlink describes a symlink, i.e. what it links from and what it links to
+type Symlink struct {
+	Target string
+	Link   string
 }
 
 // Config ...
@@ -24,8 +31,9 @@ type Config struct {
 // NewManager ...
 func NewManager(c conf.Config, configFile string) *Manager {
 	return &Manager{
-		config:     c,
-		configFile: configFile,
+		LinkManager: NewLinkManager(c),
+		config:      c,
+		configFile:  configFile,
 	}
 }
 
@@ -44,8 +52,8 @@ func (mgr Manager) Add(target, newLocation string) (*Symlink, error) {
 		newLocation = loc
 	}
 
-	symlink := NewSymlink(mgr.config, newLocation, target)
-	err := symlink.Ensure(mgr.config)
+	symlink := mgr.LinkManager.New(newLocation, target)
+	err := mgr.LinkManager.Ensure(symlink)
 	if err != nil {
 		return symlink, err
 	}
@@ -61,15 +69,15 @@ func (mgr Manager) saveSymlink(new *Symlink) error {
 		return err
 	}
 
-	new.Unexpand(mgr.config.UserHome)
+	unexpanded := mgr.LinkManager.Unexpand(*new)
 	for _, existing := range saved.Symlinks {
-		if new.Target == existing.Target && new.Link == existing.Link {
-			logrus.WithField("symlink", new).Info("symlink already saved, nothing new to store")
+		if unexpanded.Target == existing.Target && unexpanded.Link == existing.Link {
+			logrus.WithField("symlink", unexpanded).Info("symlink already saved, nothing new to store")
 			return nil
 		}
 	}
 
-	saved.Symlinks = append(saved.Symlinks, *new)
+	saved.Symlinks = append(saved.Symlinks, *unexpanded)
 	logrus.WithFields(logrus.Fields{
 		"symlinks": saved,
 	}).Debug("Storing updated list of symlinks")
@@ -78,28 +86,12 @@ func (mgr Manager) saveSymlink(new *Symlink) error {
 
 // Remove ...
 func (mgr Manager) Remove(link string) error {
-	if !filepath.IsAbs(link) {
-		link = mgr.config.Fs.Join(mgr.config.WorkingDir, link)
-	}
-
-	target, err := mgr.config.Fs.Readlink(link)
+	s, err := mgr.LinkManager.Remove(link)
 	if err != nil {
 		return err
 	}
 
-	symlink := NewSymlink(mgr.config, target, link)
-
-	err = mgr.config.Fs.Remove(link)
-	if err != nil {
-		return err
-	}
-
-	err = mgr.config.Fs.Rename(target, link)
-	if err != nil {
-		return err
-	}
-
-	return mgr.removeFromConfiguration(*symlink)
+	return mgr.removeFromConfiguration(*s)
 }
 
 func (mgr Manager) removeFromConfiguration(symlink Symlink) error {
@@ -112,10 +104,14 @@ func (mgr Manager) removeFromConfiguration(symlink Symlink) error {
 		return nil
 	}
 
-	symlink.Unexpand(mgr.config.UserHome)
+	unexpanded := mgr.LinkManager.Unexpand(symlink)
 	index := -1
 	for i, s := range config.Symlinks {
-		if symlink.Target == s.Target && symlink.Link == s.Link {
+		logrus.WithFields(logrus.Fields{
+			"unexpanded": unexpanded,
+			"saved":      s,
+		}).Debug("comparing if symlinks are the same")
+		if unexpanded.Target == s.Target && unexpanded.Link == s.Link {
 			index = i
 		}
 	}
@@ -157,8 +153,8 @@ func (mgr Manager) Ensure() error {
 
 	failed := []Symlink{}
 	for _, symlink := range config.Symlinks {
-		s := NewSymlink(mgr.config, symlink.Target, symlink.Link)
-		err = s.Ensure(mgr.config)
+		s := mgr.LinkManager.New(symlink.Target, symlink.Link)
+		err = mgr.LinkManager.Ensure(s)
 		if err != nil {
 			logrus.WithField("symlink", symlink).WithError(err).Error("failed to ensure symlink")
 			failed = append(failed, symlink)
