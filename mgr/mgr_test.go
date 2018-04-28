@@ -15,7 +15,13 @@ import (
 	"github.com/mbark/punkt/conf"
 	"github.com/mbark/punkt/file"
 	"github.com/mbark/punkt/mgr"
+	"github.com/mbark/punkt/mgr/symlink"
+	"github.com/mbark/punkt/mgr/symlink/symlinktest"
 )
+
+type managerConfig struct {
+	Symlinks []symlink.Symlink
+}
 
 type mockManager struct {
 	mock.Mock
@@ -46,52 +52,50 @@ func TestMgr(t *testing.T) {
 	RunSpecs(t, "Mgr Suite")
 }
 
+const name = "foo"
+
 var _ = Describe("Manager", func() {
+	var mockMgr *mockManager
+	var linkMgr *symlinktest.MockLinkManager
+	var config conf.Config
+	var root *mgr.RootManager
+
 	BeforeEach(func() {
 		logrus.SetLevel(logrus.PanicLevel)
-	})
 
-	It("should always return at least the git and symlink managers", func() {
-		config := conf.Config{Managers: make(map[string]map[string]string)}
-
-		root := mgr.NewRootManager(config)
-		all := root.All()
-
-		Expect(len(all)).To(Equal(2))
-	})
-
-	It("should return an additional manager if configured", func() {
 		mgrs := make(map[string]map[string]string)
-		mgrs["foo"] = make(map[string]string)
+		mgrs[name] = make(map[string]string)
+		config = conf.Config{
+			Managers: mgrs,
+			Fs:       memfs.New(),
+		}
+		root = mgr.NewRootManager(config)
 
-		config := conf.Config{Managers: mgrs}
+		mockMgr = new(mockManager)
+		mockMgr.On("Name", mock.Anything).Return(name)
 
-		root := mgr.NewRootManager(config)
-		all := root.All()
+		linkMgr = new(symlinktest.MockLinkManager)
+		root.LinkManager = linkMgr
+	})
 
-		Expect(len(all)).To(Equal(3))
+	Context("All", func() {
+		It("should always return at least the git and symlink managers", func() {
+			config := conf.Config{Managers: make(map[string]map[string]string)}
+
+			root := mgr.NewRootManager(config)
+			all := root.All()
+
+			Expect(len(all)).To(Equal(2))
+		})
+
+		It("should return an additional manager if configured", func() {
+			all := root.All()
+
+			Expect(len(all)).To(Equal(3))
+		})
 	})
 
 	Context("Dump", func() {
-		var mockMgr *mockManager
-		var root *mgr.RootManager
-		var config conf.Config
-
-		BeforeEach(func() {
-			name := "foo"
-
-			mgrs := make(map[string]map[string]string)
-			mgrs[name] = make(map[string]string)
-			config = conf.Config{
-				Managers: mgrs,
-				Fs:       memfs.New(),
-			}
-			root = mgr.NewRootManager(config)
-
-			mockMgr = new(mockManager)
-			mockMgr.On("Name", mock.Anything).Return(name)
-		})
-
 		It("should succeed if all managers succeed and return empty string", func() {
 			mockMgr.On("Dump", mock.Anything).Return("", nil)
 
@@ -124,7 +128,85 @@ var _ = Describe("Manager", func() {
 		})
 	})
 
-	Context("Ensure", func() {})
+	Context("Ensure", func() {
+		It("should succeed if the managers succeed and has no config files", func() {
+			mockMgr.On("Ensure").Return(nil)
 
-	Context("Update", func() {})
+			Expect(root.Ensure([]mgr.Manager{mockMgr})).To(Succeed())
+		})
+
+		It("should fail if some manager fails", func() {
+			mockMgr.On("Ensure").Return(fmt.Errorf("fail"))
+
+			Expect(root.Ensure([]mgr.Manager{mockMgr})).NotTo(Succeed())
+		})
+
+		It("should ensure the symlink exists for the managers", func() {
+			mockMgr.On("Ensure").Return(nil)
+			linkMgr.On("Ensure", mock.Anything).Return(nil)
+			expected := symlink.Symlink{
+				Link:   "/link",
+				Target: "/target",
+			}
+
+			mgrConfig := managerConfig{Symlinks: []symlink.Symlink{expected}}
+
+			err := file.SaveToml(config.Fs, mgrConfig, root.ConfigFile(name))
+			Expect(err).To(BeNil())
+
+			Expect(root.Ensure([]mgr.Manager{mockMgr})).To(Succeed())
+
+			linkMgr.AssertNumberOfCalls(GinkgoT(), "Ensure", 1)
+		})
+
+		It("should fail if some symlink doesn't exist", func() {
+			mockMgr.On("Ensure").Return(nil)
+			linkMgr.On("Ensure", mock.Anything).Return(fmt.Errorf("fail"))
+			expected := symlink.Symlink{
+				Link:   "/link",
+				Target: "/target",
+			}
+
+			mgrConfig := managerConfig{Symlinks: []symlink.Symlink{expected}}
+
+			err := file.SaveToml(config.Fs, mgrConfig, root.ConfigFile(name))
+			Expect(err).To(BeNil())
+
+			Expect(root.Ensure([]mgr.Manager{mockMgr})).NotTo(Succeed())
+		})
+
+		It("should fail if some config file can't be parsed", func() {
+			mockMgr.On("Ensure").Return(nil)
+			linkMgr.On("Ensure", mock.Anything).Return(nil)
+
+			err := file.Save(config.Fs, "foo", root.ConfigFile(name))
+			Expect(err).To(BeNil())
+
+			Expect(root.Ensure([]mgr.Manager{mockMgr})).NotTo(Succeed())
+		})
+
+		It("should succeed even if the toml file doesn't contain a symlinks key", func() {
+			mockMgr.On("Ensure").Return(nil)
+			linkMgr.On("Ensure", mock.Anything).Return(nil)
+
+			err := file.Save(config.Fs, "[foo]", root.ConfigFile(name))
+			Expect(err).To(BeNil())
+
+			Expect(root.Ensure([]mgr.Manager{mockMgr})).To(Succeed())
+		})
+	})
+
+	Context("Update", func() {
+		It("should succeed if all managers do", func() {
+			mockMgr.On("Update").Return(nil)
+
+			Expect(root.Update([]mgr.Manager{mockMgr})).To(Succeed())
+		})
+
+		It("should fail if a manager fails", func() {
+			mockMgr.On("Update").Return(fmt.Errorf("fail"))
+
+			Expect(root.Update([]mgr.Manager{mockMgr})).NotTo(Succeed())
+		})
+	})
 })

@@ -16,6 +16,7 @@ import (
 	"github.com/mbark/punkt/conf"
 	"github.com/mbark/punkt/file"
 	"github.com/mbark/punkt/mgr/symlink"
+	"github.com/mbark/punkt/mgr/symlink/symlinktest"
 )
 
 func TestSymlink(t *testing.T) {
@@ -23,41 +24,9 @@ func TestSymlink(t *testing.T) {
 	RunSpecs(t, "Symlink Suite")
 }
 
-type mockLinkManager struct {
-	mock.Mock
-}
-
-func (m *mockLinkManager) New(target, link string) *symlink.Symlink {
-	args := m.Called(target, link)
-	return args.Get(0).(*symlink.Symlink)
-}
-
-func (m *mockLinkManager) Remove(link string) (*symlink.Symlink, error) {
-	args := m.Called(link)
-	return args.Get(0).(*symlink.Symlink), args.Error(1)
-}
-
-func (m *mockLinkManager) Ensure(link *symlink.Symlink) error {
-	args := m.Called(link)
-	return args.Error(0)
-}
-
-func (m *mockLinkManager) Exists(link *symlink.Symlink) bool {
-	args := m.Called(link)
-	return args.Bool(0)
-}
-
-func (m *mockLinkManager) Expand(link symlink.Symlink) *symlink.Symlink {
-	return &link
-}
-
-func (m *mockLinkManager) Unexpand(link symlink.Symlink) *symlink.Symlink {
-	return &link
-}
-
 var _ = Describe("Symlink: Manager", func() {
 	var config *conf.Config
-	var linkMgr *mockLinkManager
+	var linkMgr *symlinktest.MockLinkManager
 	var mgr *symlink.Manager
 	var configFile string
 
@@ -80,7 +49,7 @@ var _ = Describe("Symlink: Manager", func() {
 		configFile = filepath.Join(config.PunktHome, "symlinks.toml")
 
 		mgr = symlink.NewManager(*config, configFile)
-		linkMgr = new(mockLinkManager)
+		linkMgr = new(symlinktest.MockLinkManager)
 		mgr.LinkManager = linkMgr
 
 		linkMgr.On("New", mock.Anything, mock.Anything).Return(new(symlink.Symlink))
@@ -129,7 +98,7 @@ var _ = Describe("Symlink: Manager", func() {
 		})
 
 		It("should fail if some repo can't be ensured", func() {
-			linkMgr = new(mockLinkManager)
+			linkMgr = new(symlinktest.MockLinkManager)
 			mgr.LinkManager = linkMgr
 			linkMgr.On("New", mock.Anything, mock.Anything).Return(new(symlink.Symlink))
 			linkMgr.On("Ensure", mock.Anything).Return(fmt.Errorf("fail"))
@@ -142,20 +111,27 @@ var _ = Describe("Symlink: Manager", func() {
 	})
 
 	var _ = Context("when running Add", func() {
-		// TODO: this test does nothing
 		It("should make the target path absolute", func() {
 			target := "relative"
+			location := "/foo/bar"
 			expected := filepath.Join(config.WorkingDir, target)
-			linkMgr.On("New", mock.Anything, expected).Return(new(symlink.Symlink))
 
-			_, err := mgr.Add(target, "/foo/bar")
+			_, err := mgr.Add(target, location)
 			Expect(err).To(BeNil())
+
+			linkMgr.AssertCalled(GinkgoT(), "New", location, expected)
 		})
 
-		// TODO: this test does nothing
 		It("should ensure the symlink exists", func() {
+			linkMgr = new(symlinktest.MockLinkManager)
+			mgr.LinkManager = linkMgr
+			linkMgr.On("New", mock.Anything, mock.Anything).Return(new(symlink.Symlink))
+			linkMgr.On("Ensure", mock.Anything).Return(nil)
+
 			_, err := mgr.Add("/a/file", "/some/where")
 			Expect(err).To(BeNil())
+
+			linkMgr.AssertCalled(GinkgoT(), "Ensure", mock.Anything)
 		})
 
 		It("should save the symlink added", func() {

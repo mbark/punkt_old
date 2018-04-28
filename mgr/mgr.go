@@ -26,13 +26,15 @@ type Manager interface {
 
 // RootManager ...
 type RootManager struct {
-	config conf.Config
+	LinkManager symlink.LinkManager
+	config      conf.Config
 }
 
 // NewRootManager ...
 func NewRootManager(config conf.Config) *RootManager {
 	return &RootManager{
-		config: config,
+		LinkManager: symlink.NewLinkManager(config),
+		config:      config,
 	}
 }
 
@@ -82,12 +84,10 @@ func (rootMgr RootManager) Ensure(mgrs []Manager) error {
 			return err
 		}
 
-		linkManager := symlink.NewLinkManager(rootMgr.config)
-
 		logger = logger.WithField("symlinks", symlinks)
 		for i := range symlinks {
-			expanded := linkManager.Expand(symlinks[i])
-			err = linkManager.Ensure(expanded)
+			expanded := rootMgr.LinkManager.Expand(symlinks[i])
+			err = rootMgr.LinkManager.Ensure(expanded)
 			if err != nil {
 				logger.WithField("symlink", symlinks[i]).WithError(err).Error("unable to ensure symlink")
 				return err
