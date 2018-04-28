@@ -11,36 +11,51 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// ManagerConfig ...
+type ManagerConfig struct {
+	Symlinks []symlink.Symlink
+}
+
 // Manager ...
 type Manager interface {
 	Name() string
 	Dump() (string, error)
 	Ensure() error
 	Update() error
-	Symlinks() ([]symlink.Symlink, error)
+}
+
+// RootManager ...
+type RootManager struct {
+	config conf.Config
+}
+
+// NewRootManager ...
+func NewRootManager(config conf.Config) *RootManager {
+	return &RootManager{
+		config: config,
+	}
 }
 
 // All returns a list of all available managers
-func All(c conf.Config) []Manager {
+func (rootMgr RootManager) All() []Manager {
 	var mgrs []Manager
-	for name := range c.Managers {
-		mgr := generic.NewManager(name, configFile(c, name), c)
+	for name := range rootMgr.config.Managers {
+		mgr := generic.NewManager(rootMgr.config, rootMgr.ConfigFile(name), name)
 		mgrs = append(mgrs, mgr)
 	}
 
-	return append(mgrs, Git(c), Symlink(c))
+	return append(mgrs, rootMgr.Git(), rootMgr.Symlink())
 }
 
 // Dump ...
-func Dump(c conf.Config) error {
-	mgrs := All(c)
+func (rootMgr RootManager) Dump(mgrs []Manager) error {
 	for i := range mgrs {
 		out, err := mgrs[i].Dump()
 		if err != nil {
 			return err
 		}
 
-		err = file.Save(c.Fs, out, configFile(c, mgrs[i].Name()))
+		err = file.Save(rootMgr.config.Fs, out, rootMgr.ConfigFile(mgrs[i].Name()))
 		if err != nil {
 			return err
 		}
@@ -50,8 +65,7 @@ func Dump(c conf.Config) error {
 }
 
 // Ensure ...
-func Ensure(c conf.Config) error {
-	mgrs := All(c)
+func (rootMgr RootManager) Ensure(mgrs []Manager) error {
 	for i := range mgrs {
 		logger := logrus.WithField("manager", mgrs[i].Name())
 
@@ -62,13 +76,13 @@ func Ensure(c conf.Config) error {
 			return err
 		}
 
-		symlinks, err := mgrs[i].Symlinks()
+		symlinks, err := rootMgr.readSymlinks(mgrs[i].Name())
 		if err != nil {
 			logger.WithError(err).Error("unable to get symlinks")
 			return err
 		}
 
-		linkManager := symlink.NewLinkManager(c)
+		linkManager := symlink.NewLinkManager(rootMgr.config)
 
 		logger = logger.WithField("symlinks", symlinks)
 		for i := range symlinks {
@@ -84,16 +98,47 @@ func Ensure(c conf.Config) error {
 	return nil
 }
 
+// Update ...
+func (rootMgr RootManager) Update(mgrs []Manager) error {
+	for i := range mgrs {
+		err := mgrs[i].Update()
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"manager": mgrs[i],
+			}).WithError(err).Error("Command ensure failed for manager")
+
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (rootMgr RootManager) readSymlinks(name string) ([]symlink.Symlink, error) {
+	var config ManagerConfig
+	err := file.ReadToml(rootMgr.config.Fs, &config, rootMgr.ConfigFile(name))
+	if err != nil && err != file.ErrNoSuchFile {
+		if err == file.ErrNoSuchFile {
+			return []symlink.Symlink{}, nil
+		}
+
+		return nil, err
+	}
+
+	return config.Symlinks, nil
+}
+
 // Git ...
-func Git(c conf.Config) git.Manager {
-	return *git.NewManager(c, configFile(c, "git"))
+func (rootMgr RootManager) Git() git.Manager {
+	return *git.NewManager(rootMgr.config, rootMgr.ConfigFile("git"))
 }
 
 // Symlink ...
-func Symlink(c conf.Config) symlink.Manager {
-	return *symlink.NewManager(c, configFile(c, "symlink"))
+func (rootMgr RootManager) Symlink() symlink.Manager {
+	return *symlink.NewManager(rootMgr.config, rootMgr.ConfigFile("symlink"))
 }
 
-func configFile(c conf.Config, name string) string {
-	return filepath.Join(c.PunktHome, name+".toml")
+// ConfigFile ...
+func (rootMgr RootManager) ConfigFile(name string) string {
+	return filepath.Join(rootMgr.config.PunktHome, name+".toml")
 }

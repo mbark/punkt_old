@@ -43,15 +43,6 @@ func (mgr Manager) Add(target, newLocation string) (*Symlink, error) {
 		target = mgr.config.Fs.Join(mgr.config.WorkingDir, target)
 	}
 
-	if newLocation == "" {
-		loc, err := deriveLink(target, mgr.config.UserHome, mgr.config.Dotfiles)
-		if err != nil {
-			return nil, err
-		}
-
-		newLocation = loc
-	}
-
 	symlink := mgr.LinkManager.New(newLocation, target)
 	err := mgr.LinkManager.Ensure(symlink)
 	if err != nil {
@@ -155,6 +146,7 @@ func (mgr Manager) Ensure() error {
 	for _, symlink := range config.Symlinks {
 		s := mgr.LinkManager.New(symlink.Target, symlink.Link)
 		err = mgr.LinkManager.Ensure(s)
+		logrus.WithError(err).WithField("symlink", symlink).Info("foo")
 		if err != nil {
 			logrus.WithField("symlink", symlink).WithError(err).Error("failed to ensure symlink")
 			failed = append(failed, symlink)
@@ -166,19 +158,4 @@ func (mgr Manager) Ensure() error {
 	}
 
 	return nil
-}
-
-// Symlinks ...
-func (mgr Manager) Symlinks() ([]Symlink, error) {
-	var config Config
-	err := file.ReadToml(mgr.config.Fs, &config, mgr.configFile)
-	if err != nil && err != file.ErrNoSuchFile {
-		if err == file.ErrNoSuchFile {
-			return []Symlink{}, nil
-		}
-
-		return nil, err
-	}
-
-	return config.Symlinks, nil
 }

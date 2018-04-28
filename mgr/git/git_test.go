@@ -11,6 +11,7 @@ import (
 	g "github.com/onsi/ginkgo"
 	m "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/mock"
 	"gopkg.in/src-d/go-billy.v4/memfs"
 
 	"github.com/mbark/punkt/conf"
@@ -24,43 +25,34 @@ func TestGit(t *testing.T) {
 	g.RunSpecs(t, "Git Suite")
 }
 
-type fakeRepoManager struct {
-	dumper  func(string) (*git.Repo, error)
-	ensurer func(git.Repo) error
-	updater func(string) (bool, error)
+type mockRepoManager struct {
+	mock.Mock
 }
 
-func (mgr fakeRepoManager) Dump(dir string) (*git.Repo, error) {
-	if mgr.dumper != nil {
-		return mgr.dumper(dir)
-	}
-
-	return &git.Repo{Name: filepath.Base(dir), Config: nil}, nil
+func (m *mockRepoManager) Dump(dir string) (*git.Repo, error) {
+	args := m.Called(dir)
+	return args.Get(0).(*git.Repo), args.Error(1)
 }
 
-func (mgr fakeRepoManager) Ensure(repo git.Repo) error {
-	if mgr.ensurer != nil {
-		return mgr.ensurer(repo)
-	}
-
-	return nil
+func (m *mockRepoManager) Ensure(repo git.Repo) error {
+	args := m.Called(repo)
+	return args.Error(0)
 }
 
-func (mgr fakeRepoManager) Update(dir string) (bool, error) {
-	if mgr.updater != nil {
-		return mgr.updater(dir)
-	}
-
-	return true, nil
+func (m *mockRepoManager) Update(dir string) (bool, error) {
+	args := m.Called(dir)
+	return args.Bool(0), args.Error(1)
 }
 
 var _ = g.Describe("Git: Manager", func() {
 	var config *conf.Config
 	var mgr *git.Manager
-	var repoMgr *fakeRepoManager
+	var repoMgr *mockRepoManager
 	var configFile string
 
 	g.BeforeEach(func() {
+		logrus.SetLevel(logrus.PanicLevel)
+
 		config = &conf.Config{
 			UserHome:   "/home",
 			PunktHome:  "/home/.config/punkt",
@@ -72,9 +64,11 @@ var _ = g.Describe("Git: Manager", func() {
 
 		configFile = filepath.Join(config.PunktHome, "git.toml")
 		mgr = git.NewManager(*config, configFile)
-		repoMgr = &fakeRepoManager{}
+
+		repoMgr = new(mockRepoManager)
 		mgr.RepoManager = repoMgr
-		logrus.SetLevel(logrus.PanicLevel)
+
+		repoMgr.On("Dump", mock.Anything).Return(new(git.Repo), nil)
 	})
 
 	g.It("should be called git", func() {
@@ -134,6 +128,7 @@ var _ = g.Describe("Git: Manager", func() {
 		})
 
 		g.It("should do nothing if the repo already exists", func() {
+			repoMgr.On("Ensure", mock.Anything).Return(nil)
 			dir := addFakeRepo(config, "repo")
 			m.Expect(mgr.Add(dir)).To(m.Succeed())
 
@@ -141,9 +136,7 @@ var _ = g.Describe("Git: Manager", func() {
 		})
 
 		g.It("should fail if some repos can't be ensured", func() {
-			repoMgr.ensurer = func(repo git.Repo) error {
-				return fmt.Errorf("fail")
-			}
+			repoMgr.On("Ensure", mock.Anything).Return(fmt.Errorf("fail"))
 			dir := addFakeRepo(config, "repo")
 			m.Expect(mgr.Add(dir)).To(m.Succeed())
 
@@ -165,45 +158,11 @@ var _ = g.Describe("Git: Manager", func() {
 		})
 
 		g.It("should fail if some repos can't be updated", func() {
-			repoMgr.updater = func(dir string) (bool, error) {
-				return false, fmt.Errorf("fail")
-			}
+			repoMgr.On("Update", mock.Anything).Return(false, fmt.Errorf("fail"))
 			dir := addFakeRepo(config, "repo")
 			m.Expect(mgr.Add(dir)).To(m.Succeed())
 
 			m.Expect(mgr.Update()).NotTo(m.Succeed())
-		})
-	})
-
-	var _ = g.Context("when getting Symlinks", func() {
-		g.It("should return the saved symlinks", func() {
-			expected := []symlink.Symlink{
-				{Target: "~/.dotfiles/.gitconfig", Link: "~/.gitconfig"},
-				{Target: "~/.dotfiles/.config/git/config", Link: "~/.config/git/config"},
-			}
-
-			err := file.SaveToml(config.Fs, &git.Config{Symlinks: expected}, configFile)
-			m.Expect(err).To(m.BeNil())
-
-			actual, err := mgr.Symlinks()
-			m.Expect(err).To(m.BeNil())
-
-			m.Expect(actual).Should(m.ConsistOf(expected))
-		})
-
-		g.It("should return an empty list if the config doesn't exit", func() {
-			actual, err := mgr.Symlinks()
-			m.Expect(err).To(m.BeNil())
-			m.Expect(actual).To(m.BeEmpty())
-		})
-
-		g.It("should return an error if the file can't be read", func() {
-			err := file.Save(config.Fs, "foo", configFile)
-			m.Expect(err).To(m.BeNil())
-
-			actual, err := mgr.Symlinks()
-			m.Expect(actual).To(m.BeNil())
-			m.Expect(err).NotTo(m.BeNil())
 		})
 	})
 

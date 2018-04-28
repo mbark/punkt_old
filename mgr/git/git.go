@@ -169,18 +169,3 @@ func (mgr Manager) Dump() (string, error) {
 
 	return out.String(), err
 }
-
-// Symlinks ...
-func (mgr Manager) Symlinks() ([]symlink.Symlink, error) {
-	var config Config
-	err := file.ReadToml(mgr.config.Fs, &config, mgr.configFile)
-	if err != nil && err != file.ErrNoSuchFile {
-		if err == file.ErrNoSuchFile {
-			return []symlink.Symlink{}, nil
-		}
-
-		return nil, err
-	}
-
-	return config.Symlinks, nil
-}

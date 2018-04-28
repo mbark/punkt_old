@@ -3,7 +3,6 @@ package cmd
 import (
 	"os"
 
-	"github.com/mbark/punkt/mgr"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +21,7 @@ func init() {
 }
 
 func ensure() {
-	err := mgr.Ensure(*config)
+	err := rootMgr.Ensure(rootMgr.All())
 	if err != nil {
 		os.Exit(1)
 	}

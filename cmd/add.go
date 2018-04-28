@@ -3,7 +3,6 @@ package cmd
 import (
 	"os"
 
-	"github.com/mbark/punkt/mgr"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -43,7 +42,7 @@ func addSymlink(cmd *cobra.Command, args []string) {
 		newLocation = args[1]
 	}
 
-	mgr := mgr.Symlink(*config)
+	mgr := rootMgr.Symlink()
 	link, err := mgr.Add(args[0], newLocation)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
@@ -55,7 +54,7 @@ func addSymlink(cmd *cobra.Command, args []string) {
 }
 
 func addGit(cmd *cobra.Command, args []string) {
-	mgr := mgr.Git(*config)
+	mgr := rootMgr.Git()
 	err := mgr.Add(args[0])
 	if err != nil {
 		os.Exit(1)

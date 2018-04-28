@@ -21,7 +21,7 @@ var (
 )
 
 var config *conf.Config
-var managers []mgr.Manager
+var rootMgr mgr.RootManager
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
@@ -54,5 +54,5 @@ func init() {
 
 func initConfig() {
 	config = conf.NewConfig(path.ExpandHome(configFile, path.GetUserHome()))
-	managers = mgr.All(*config)
+	rootMgr = *mgr.NewRootManager(*config)
 }

@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/mbark/punkt/conf"
-	"github.com/mbark/punkt/file"
 	"github.com/mbark/punkt/mgr/symlink"
 	"github.com/mbark/punkt/run"
 	"github.com/sirupsen/logrus"
@@ -25,7 +24,7 @@ type Config struct {
 }
 
 // NewManager ...
-func NewManager(name, configFile string, c conf.Config) *Manager {
+func NewManager(c conf.Config, configFile, name string) *Manager {
 	logrus.WithFields(logrus.Fields{
 		"name":     name,
 		"commands": c.Managers[name],
@@ -41,21 +40,23 @@ func NewManager(name, configFile string, c conf.Config) *Manager {
 
 func (mgr Manager) resolveCommand(operation string, args ...string) *exec.Cmd {
 	var name string
+	logger := logrus.WithFields(logrus.Fields{
+		"operation": operation,
+		"args":      args,
+	})
 
 	if val, ok := mgr.commands[operation]; ok {
+		logger.Info("operation found in manager config")
 		name = val
 	} else {
+		logger.WithField("command", mgr.commands).Info("operation not found in manager config, using 'command'")
 		name = mgr.commands["command"]
 		args = append([]string{operation}, args...)
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"operation": operation,
-		"args":      args,
-		"command":   name,
-	}).Info("resolved command to use")
-
 	command := strings.Join(append([]string{name}, args...), " ")
+	logger.WithField("command", command).Info("resolved command to use")
+
 	return mgr.config.Command("sh", "-c", command)
 }
 
@@ -89,19 +90,4 @@ func (mgr Manager) Ensure() error {
 	run.PrintOutputToUser(cmd)
 
 	return run.Run(cmd)
-}
-
-// Symlinks ...
-func (mgr Manager) Symlinks() ([]symlink.Symlink, error) {
-	var config Config
-	err := file.ReadToml(mgr.config.Fs, &config, mgr.configFile)
-	if err != nil && err != file.ErrNoSuchFile {
-		if err == file.ErrNoSuchFile {
-			return []symlink.Symlink{}, nil
-		}
-
-		return nil, err
-	}
-
-	return config.Symlinks, nil
 }

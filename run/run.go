@@ -65,6 +65,7 @@ func WithCapture(cmd *exec.Cmd) (*bytes.Buffer, error) {
 	err = cmd.Wait()
 	if err != nil {
 		logger.WithError(err).Error("Unable to run command")
+		return nil, err
 	}
 
 	return &stdoutBuf, nil

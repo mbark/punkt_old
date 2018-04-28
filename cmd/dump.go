@@ -1,9 +1,9 @@
 package cmd
 
 import (
+	"os"
 	"strings"
 
-	"github.com/mbark/punkt/mgr"
 	"github.com/spf13/cobra"
 )
 
@@ -27,5 +27,8 @@ func init() {
 }
 
 func dump(cmd *cobra.Command, args []string) {
-	mgr.Dump(*config)
+	err := rootMgr.Dump(rootMgr.All())
+	if err != nil {
+		os.Exit(1)
+	}
 }

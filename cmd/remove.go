@@ -3,7 +3,6 @@ package cmd
 import (
 	"os"
 
-	"github.com/mbark/punkt/mgr"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -38,7 +37,7 @@ func init() {
 }
 
 func removeSymlink(cmd *cobra.Command, args []string) {
-	mgr := mgr.Symlink(*config)
+	mgr := rootMgr.Symlink()
 	err := mgr.Remove(args[0])
 	if err != nil {
 		logrus.WithError(err).Error("unable to remove symlink")
@@ -47,7 +46,7 @@ func removeSymlink(cmd *cobra.Command, args []string) {
 }
 
 func removeGit(cmd *cobra.Command, args []string) {
-	mgr := mgr.Git(*config)
+	mgr := rootMgr.Git()
 	err := mgr.Remove(args[0])
 	if err != nil {
 		logrus.WithError(err).Error("unable to remove git repository")
