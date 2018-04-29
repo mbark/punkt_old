@@ -28,12 +28,6 @@ func (m *MockLinkManager) Ensure(link *symlink.Symlink) error {
 	return args.Error(0)
 }
 
-// Exists ...
-func (m *MockLinkManager) Exists(link *symlink.Symlink) bool {
-	args := m.Called(link)
-	return args.Bool(0)
-}
-
 // Expand ...
 func (m *MockLinkManager) Expand(link symlink.Symlink) *symlink.Symlink {
 	return &link
