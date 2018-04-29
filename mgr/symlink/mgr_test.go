@@ -54,7 +54,7 @@ var _ = Describe("Symlink: Manager", func() {
 		Expect(mgr.Name()).To(Equal("symlink"))
 	})
 
-	var _ = Context("when running Dump", func() {
+	var _ = Context("Dump", func() {
 		It("should do nothing and always succeed", func() {
 			out, err := mgr.Dump()
 			Expect(err).To(BeNil())
@@ -62,13 +62,21 @@ var _ = Describe("Symlink: Manager", func() {
 		})
 	})
 
-	var _ = Context("when running update", func() {
+	var _ = Context("Update", func() {
 		It("should do nothing and always succeed", func() {
 			Expect(mgr.Update()).To(Succeed())
 		})
 	})
 
-	var _ = Context("when running Add", func() {
+	var _ = Context("Dump", func() {
+		It("should do nothing and always succeed", func() {
+			out, err := mgr.Dump()
+			Expect(out).To(Equal(""))
+			Expect(err).To(BeNil())
+		})
+	})
+
+	var _ = Context("Add", func() {
 		It("should make the target path absolute", func() {
 			target := "relative"
 			location := "/foo/bar"
@@ -135,7 +143,7 @@ var _ = Describe("Symlink: Manager", func() {
 		})
 	})
 
-	var _ = Context("when running Remove", func() {
+	var _ = Context("Remove", func() {
 		It("should succeed when removing a link that was added", func() {
 			s, err := mgr.Add("/a/file", "/some/where")
 			Expect(err).To(BeNil())

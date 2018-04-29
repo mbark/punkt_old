@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/BurntSushi/toml"
-	g "github.com/onsi/ginkgo"
-	m "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
 	"gopkg.in/src-d/go-billy.v4/memfs"
@@ -21,8 +21,8 @@ import (
 )
 
 func TestGit(t *testing.T) {
-	m.RegisterFailHandler(g.Fail)
-	g.RunSpecs(t, "Git Suite")
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Git Suite")
 }
 
 type mockRepoManager struct {
@@ -44,13 +44,13 @@ func (m *mockRepoManager) Update(dir string) (bool, error) {
 	return args.Bool(0), args.Error(1)
 }
 
-var _ = g.Describe("Git: Manager", func() {
+var _ = Describe("Git: Manager", func() {
 	var config *conf.Config
 	var mgr *git.Manager
 	var repoMgr *mockRepoManager
 	var configFile string
 
-	g.BeforeEach(func() {
+	BeforeEach(func() {
 		logrus.SetLevel(logrus.PanicLevel)
 
 		config = &conf.Config{
@@ -71,24 +71,24 @@ var _ = g.Describe("Git: Manager", func() {
 		repoMgr.On("Dump", mock.Anything).Return(new(git.Repo), nil)
 	})
 
-	g.It("should be called git", func() {
-		m.Expect(mgr.Name()).To(m.Equal("git"))
+	It("should be called git", func() {
+		Expect(mgr.Name()).To(Equal("git"))
 	})
 
-	var _ = g.Context("when running Dump", func() {
-		g.It("should return valid toml", func() {
+	var _ = Context("Dump", func() {
+		It("should return valid toml", func() {
 			dumped, err := mgr.Dump()
-			m.Expect(err).To(m.BeNil())
+			Expect(err).To(BeNil())
 
 			var actual git.Config
 			_, err = toml.Decode(dumped, &actual)
-			m.Expect(err).To(m.BeNil())
+			Expect(err).To(BeNil())
 
-			m.Expect(actual.Symlinks).Should(m.BeEmpty())
-			m.Expect(actual.Repositories).Should(m.BeEmpty())
+			Expect(actual.Symlinks).Should(BeEmpty())
+			Expect(actual.Repositories).Should(BeEmpty())
 		})
 
-		g.It("should contain the files to symlink", func() {
+		It("should contain the files to symlink", func() {
 			config.Command = fakeWithEnvCommand("WITH_GITCONFIG=true")
 			mgr = git.NewManager(*config, configFile)
 
@@ -98,99 +98,99 @@ var _ = g.Describe("Git: Manager", func() {
 			}
 
 			dumped, err := mgr.Dump()
-			m.Expect(err).To(m.BeNil())
+			Expect(err).To(BeNil())
 
 			var actual git.Config
 			_, err = toml.Decode(dumped, &actual)
-			m.Expect(err).To(m.BeNil())
+			Expect(err).To(BeNil())
 
-			m.Expect(actual.Symlinks).Should(m.ConsistOf(expected))
+			Expect(actual.Symlinks).Should(ConsistOf(expected))
 		})
 
-		g.It("should return no symlinks if finding the config files fails", func() {
+		It("should return no symlinks if finding the config files fails", func() {
 			config.Command = fakeWithEnvCommand("FAILING=true")
 			mgr = git.NewManager(*config, configFile)
 
 			dumped, err := mgr.Dump()
-			m.Expect(err).To(m.BeNil())
+			Expect(err).To(BeNil())
 
 			var actual git.Config
 			_, err = toml.Decode(dumped, &actual)
-			m.Expect(err).To(m.BeNil())
+			Expect(err).To(BeNil())
 
-			m.Expect(actual.Symlinks).Should(m.BeEmpty())
+			Expect(actual.Symlinks).Should(BeEmpty())
 		})
 	})
 
-	var _ = g.Context("when running Ensure", func() {
-		g.It("should succeed when no repos file exists", func() {
-			m.Expect(mgr.Ensure()).To(m.Succeed())
+	var _ = Context("Ensure", func() {
+		It("should succeed when no repos file exists", func() {
+			Expect(mgr.Ensure()).To(Succeed())
 		})
 
-		g.It("should do nothing if the repo already exists", func() {
+		It("should do nothing if the repo already exists", func() {
 			repoMgr.On("Ensure", mock.Anything).Return(nil)
 			dir := addFakeRepo(config, "repo")
-			m.Expect(mgr.Add(dir)).To(m.Succeed())
+			Expect(mgr.Add(dir)).To(Succeed())
 
-			m.Expect(mgr.Ensure()).To(m.Succeed())
+			Expect(mgr.Ensure()).To(Succeed())
 		})
 
-		g.It("should fail if some repos can't be ensured", func() {
+		It("should fail if some repos can't be ensured", func() {
 			repoMgr.On("Ensure", mock.Anything).Return(fmt.Errorf("fail"))
 			dir := addFakeRepo(config, "repo")
-			m.Expect(mgr.Add(dir)).To(m.Succeed())
+			Expect(mgr.Add(dir)).To(Succeed())
 
-			m.Expect(mgr.Ensure()).NotTo(m.Succeed())
+			Expect(mgr.Ensure()).NotTo(Succeed())
 		})
 	})
 
-	var _ = g.Context("when running Update", func() {
-		g.It("should do nothing and succeed if no repos are cloned", func() {
-			m.Expect(mgr.Update()).To(m.Succeed())
+	var _ = Context("Update", func() {
+		It("should do nothing and succeed if no repos are cloned", func() {
+			Expect(mgr.Update()).To(Succeed())
 		})
 
-		g.It("should succeed if the repo can be updated", func() {
+		It("should succeed if the repo can be updated", func() {
 			addFakeRepo(config, "repo")
 			_, err := mgr.Dump()
-			m.Expect(err).To(m.BeNil())
+			Expect(err).To(BeNil())
 
-			m.Expect(mgr.Update()).To(m.Succeed())
+			Expect(mgr.Update()).To(Succeed())
 		})
 
-		g.It("should fail if some repos can't be updated", func() {
+		It("should fail if some repos can't be updated", func() {
 			repoMgr.On("Update", mock.Anything).Return(false, fmt.Errorf("fail"))
 			dir := addFakeRepo(config, "repo")
-			m.Expect(mgr.Add(dir)).To(m.Succeed())
+			Expect(mgr.Add(dir)).To(Succeed())
 
-			m.Expect(mgr.Update()).NotTo(m.Succeed())
+			Expect(mgr.Update()).NotTo(Succeed())
 		})
 	})
 
-	var _ = g.Context("when removing a git repo", func() {
-		g.It("should be possible to remove a repo", func() {
+	var _ = Context("when removing a git repo", func() {
+		It("should be possible to remove a repo", func() {
 			repoPath := filepath.Join(config.UserHome, "repo")
 
 			c := git.Config{Repositories: []git.Repo{{Path: repoPath}}}
 			err := file.SaveToml(config.Fs, &c, configFile)
-			m.Expect(err).To(m.BeNil())
+			Expect(err).To(BeNil())
 
-			m.Expect(mgr.Remove(repoPath)).To(m.Succeed())
+			Expect(mgr.Remove(repoPath)).To(Succeed())
 
 			var actual git.Config
 			err = file.ReadToml(config.Fs, &actual, configFile)
-			m.Expect(err).To(m.BeNil())
+			Expect(err).To(BeNil())
 
-			m.Expect(actual.Repositories).To(m.BeEmpty())
+			Expect(actual.Repositories).To(BeEmpty())
 		})
 
-		g.It("should return an error if the repo doesn't exist", func() {
+		It("should return an error if the repo doesn't exist", func() {
 			repoPath := filepath.Join(config.UserHome, "repo")
 			c := git.Config{Repositories: []git.Repo{{Path: repoPath}}}
 			err := file.SaveToml(config.Fs, &c, configFile)
-			m.Expect(err).To(m.BeNil())
+			Expect(err).To(BeNil())
 
 			err = mgr.Remove("/non/existant")
-			m.Expect(err).To(m.Equal(git.ErrRepositoryNotFoundInConfig))
+			Expect(err).To(Equal(git.ErrRepositoryNotFoundInConfig))
 		})
 	})
 })
@@ -265,7 +265,7 @@ file:/home/.config/git/config   push.default=simple
 func addFakeRepo(config *conf.Config, name string) string {
 	dir := filepath.Join(config.PunktHome, "repos", name)
 	err := config.Fs.MkdirAll(dir, os.ModePerm)
-	m.Expect(err).To(m.BeNil())
+	Expect(err).To(BeNil())
 
 	return dir
 }

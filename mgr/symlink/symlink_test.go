@@ -35,7 +35,7 @@ var _ = Describe("Symlink: Link Manager", func() {
 		mgr = symlink.NewLinkManager(*config)
 	})
 
-	var _ = Context("when running New", func() {
+	var _ = Context("New", func() {
 		It("should return the link as is if both target and link are given", func() {
 			expected := symlink.Symlink{Target: "/target", Link: "/link"}
 			actual := mgr.New(expected.Target, expected.Link)
@@ -76,7 +76,7 @@ var _ = Describe("Symlink: Link Manager", func() {
 		})
 	})
 
-	var _ = Context("when running Remove", func() {
+	var _ = Context("Remove", func() {
 		var link string
 
 		BeforeEach(func() {
@@ -104,7 +104,7 @@ var _ = Describe("Symlink: Link Manager", func() {
 		})
 	})
 
-	var _ = Context("when running Ensure", func() {
+	var _ = Context("Ensure", func() {
 		It("should succeed if the symlink already exists", func() {
 			target := filepath.Join(config.Dotfiles, "target")
 			_, err := config.Fs.Create(target)
@@ -164,7 +164,7 @@ var _ = Describe("Symlink: Link Manager", func() {
 		})
 	})
 
-	var _ = Describe("when running Unexpand", func() {
+	var _ = Describe("Unexpand", func() {
 		It("should expand tilde to the home directory", func() {
 			s := mgr.Expand(symlink.Symlink{Target: "~/target", Link: "~/link"})
 			Expect(s.Target).To(Equal(filepath.Join(config.UserHome, "target")))
@@ -172,7 +172,7 @@ var _ = Describe("Symlink: Link Manager", func() {
 		})
 	})
 
-	var _ = Describe("when running Expand", func() {
+	var _ = Describe("Expand", func() {
 		It("should unexpand the home directory to tilde", func() {
 			s := mgr.Unexpand(symlink.Symlink{
 				Target: filepath.Join(config.UserHome, "target"),
