@@ -30,12 +30,6 @@ var _ = Describe("Symlink: Manager", func() {
 	var mgr *symlink.Manager
 	var configFile string
 
-	var configWithLink = symlink.Config{
-		Symlinks: []symlink.Symlink{
-			{Target: "", Link: ""},
-		},
-	}
-
 	BeforeEach(func() {
 		logrus.SetLevel(logrus.PanicLevel)
 		config = &conf.Config{
@@ -71,42 +65,6 @@ var _ = Describe("Symlink: Manager", func() {
 	var _ = Context("when running update", func() {
 		It("should do nothing and always succeed", func() {
 			Expect(mgr.Update()).To(Succeed())
-		})
-	})
-
-	var _ = Context("when running Ensure", func() {
-		It("should succeed if there are no symlinks", func() {
-			err := file.SaveToml(config.Fs, symlink.Config{}, configFile)
-			Expect(err).To(BeNil())
-			Expect(mgr.Ensure()).To(Succeed())
-		})
-
-		It("should succeed if the file can't be found", func() {
-			Expect(mgr.Ensure()).To(Succeed())
-		})
-
-		It("should fail if the toml can't be read", func() {
-			err := file.Save(config.Fs, "foo", configFile)
-			Expect(err).To(BeNil())
-			Expect(mgr.Ensure()).NotTo(Succeed())
-		})
-
-		It("should succeed if all symlinks can be ensured", func() {
-			err := file.SaveToml(config.Fs, configWithLink, configFile)
-			Expect(err).To(BeNil())
-			Expect(mgr.Ensure()).To(Succeed())
-		})
-
-		It("should fail if some repo can't be ensured", func() {
-			linkMgr = new(symlinktest.MockLinkManager)
-			mgr.LinkManager = linkMgr
-			linkMgr.On("New", mock.Anything, mock.Anything).Return(new(symlink.Symlink))
-			linkMgr.On("Ensure", mock.Anything).Return(fmt.Errorf("fail"))
-
-			err := file.SaveToml(config.Fs, configWithLink, configFile)
-			Expect(err).To(BeNil())
-
-			Expect(mgr.Ensure()).NotTo(Succeed())
 		})
 	})
 

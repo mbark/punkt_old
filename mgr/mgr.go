@@ -3,12 +3,15 @@ package mgr
 import (
 	"path/filepath"
 
+	multierror "github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+
 	"github.com/mbark/punkt/conf"
 	"github.com/mbark/punkt/file"
 	"github.com/mbark/punkt/mgr/generic"
 	"github.com/mbark/punkt/mgr/git"
 	"github.com/mbark/punkt/mgr/symlink"
-	"github.com/sirupsen/logrus"
 )
 
 // ManagerConfig ...
@@ -51,67 +54,68 @@ func (rootMgr RootManager) All() []Manager {
 
 // Dump ...
 func (rootMgr RootManager) Dump(mgrs []Manager) error {
+	var result error
 	for i := range mgrs {
 		out, err := mgrs[i].Dump()
 		if err != nil {
-			return err
+			result = multierror.Append(result, errors.Wrapf(err, "dump failed [manager: %s]", mgrs[i].Name()))
+			continue
 		}
 
 		err = file.Save(rootMgr.config.Fs, out, rootMgr.ConfigFile(mgrs[i].Name()))
 		if err != nil {
-			return err
+			result = multierror.Append(result, errors.Wrapf(err, "failed to save configuration [manager: %s]", mgrs[i].Name()))
+			continue
 		}
 	}
 
-	return nil
+	return result
 }
 
 // Ensure ...
 func (rootMgr RootManager) Ensure(mgrs []Manager) error {
+	var result error
 	for i := range mgrs {
 		logger := logrus.WithField("manager", mgrs[i].Name())
-
 		logger.Debug("running ensure")
+
 		err := mgrs[i].Ensure()
 		if err != nil {
-			logger.WithError(err).Error("ensure failed")
-			return err
+			result = multierror.Append(result, errors.Wrapf(err, "ensure failed [manager: %s]", mgrs[i].Name()))
+			continue
 		}
 
 		symlinks, err := rootMgr.readSymlinks(mgrs[i].Name())
 		if err != nil {
-			logger.WithError(err).Error("unable to get symlinks")
-			return err
+			result = multierror.Append(result, errors.Wrapf(err, "unable to get symlinks [manager: %s]", mgrs[i].Name()))
+			continue
 		}
 
-		logger = logger.WithField("symlinks", symlinks)
 		for i := range symlinks {
 			expanded := rootMgr.LinkManager.Expand(symlinks[i])
 			err = rootMgr.LinkManager.Ensure(expanded)
 			if err != nil {
-				logger.WithField("symlink", symlinks[i]).WithError(err).Error("unable to ensure symlink")
-				return err
+				result = multierror.Append(result, errors.Wrapf(err, "unable to ensure symlink [manager: %s, symlink: %v]", mgrs[i].Name(), symlinks[i]))
+				continue
 			}
 		}
 	}
 
-	return nil
+	return result
 }
 
 // Update ...
 func (rootMgr RootManager) Update(mgrs []Manager) error {
+	var result error
 	for i := range mgrs {
 		err := mgrs[i].Update()
 		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"manager": mgrs[i],
-			}).WithError(err).Error("Command ensure failed for manager")
-
-			return err
+			result = multierror.Append(result, errors.Wrapf(err, "update failed [manager: %s]", mgrs[i].Name()))
+			continue
 		}
 	}
 
-	return nil
+	return result
 }
 
 func (rootMgr RootManager) readSymlinks(name string) ([]symlink.Symlink, error) {

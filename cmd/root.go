@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	multierror "github.com/hashicorp/go-multierror"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/kyokomi/emoji.v1"
@@ -47,12 +49,34 @@ func init() {
 	RootCmd.PersistentFlags().StringVarP(&punktHome, "punkt-home", "p", punktHome, `Where all punkt configuration files should be stored`)
 	RootCmd.PersistentFlags().StringVarP(&dotfiles, "dotfiles", "d", dotfiles, `The directory containing the user's dotfiles`)
 
-	viper.BindPFlag("logLevel", RootCmd.PersistentFlags().Lookup("log-level"))
-	viper.BindPFlag("punktHome", RootCmd.PersistentFlags().Lookup("punkt-home"))
-	viper.BindPFlag("dotfiles", RootCmd.PersistentFlags().Lookup("dotfiles"))
+	var result error
+	err := viper.BindPFlag("logLevel", RootCmd.PersistentFlags().Lookup("log-level"))
+	if err != nil {
+		result = multierror.Append(result, err)
+	}
+
+	err = viper.BindPFlag("punktHome", RootCmd.PersistentFlags().Lookup("punkt-home"))
+	if err != nil {
+		result = multierror.Append(result, err)
+	}
+
+	err = viper.BindPFlag("dotfiles", RootCmd.PersistentFlags().Lookup("dotfiles"))
+	if err != nil {
+		result = multierror.Append(result, err)
+	}
+
+	if err != nil {
+		logrus.WithError(result).Fatal("failed to bind flags to configuration")
+	}
 }
 
 func initConfig() {
-	config = conf.NewConfig(path.ExpandHome(configFile, path.GetUserHome()))
+	var err error
+	config, err = conf.NewConfig(path.ExpandHome(configFile, path.GetUserHome()))
+	if err != nil {
+		logrus.WithError(err).Fatal("failed to red configuration file")
+		os.Exit(1)
+	}
+
 	rootMgr = *mgr.NewRootManager(*config)
 }

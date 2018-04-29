@@ -1,21 +1,25 @@
 package generic
 
 import (
+	"bytes"
 	"os/exec"
 	"strings"
 
 	"github.com/mbark/punkt/conf"
 	"github.com/mbark/punkt/mgr/symlink"
 	"github.com/mbark/punkt/run"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
 // Manager ...
 type Manager struct {
-	name       string
-	config     conf.Config
-	commands   map[string]string
-	configFile string
+	PrintOutputToUser func(cmd *exec.Cmd)
+	WithCapture       func(cmd *exec.Cmd) (*bytes.Buffer, error)
+	name              string
+	config            conf.Config
+	commands          map[string]string
+	configFile        string
 }
 
 // Config ...
@@ -31,10 +35,12 @@ func NewManager(c conf.Config, configFile, name string) *Manager {
 	}).Info("Constructing generic manager")
 
 	return &Manager{
-		name:       name,
-		config:     c,
-		commands:   c.Managers[name],
-		configFile: configFile,
+		PrintOutputToUser: run.PrintOutputToUser,
+		WithCapture:       run.WithCapture,
+		name:              name,
+		config:            c,
+		commands:          c.Managers[name],
+		configFile:        configFile,
 	}
 }
 
@@ -68,9 +74,9 @@ func (mgr Manager) Name() string {
 // Dump ...
 func (mgr Manager) Dump() (string, error) {
 	cmd := mgr.resolveCommand("dump")
-	stdout, err := run.WithCapture(cmd)
+	stdout, err := mgr.WithCapture(cmd)
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "failed to run command for manager: %s", mgr.Name())
 	}
 
 	return stdout.String(), nil
@@ -79,7 +85,7 @@ func (mgr Manager) Dump() (string, error) {
 // Update ...
 func (mgr Manager) Update() error {
 	cmd := mgr.resolveCommand("ensure", mgr.configFile)
-	run.PrintOutputToUser(cmd)
+	mgr.PrintOutputToUser(cmd)
 
 	return run.Run(cmd)
 }
@@ -87,7 +93,7 @@ func (mgr Manager) Update() error {
 // Ensure ...
 func (mgr Manager) Ensure() error {
 	cmd := mgr.resolveCommand("ensure", mgr.configFile)
-	run.PrintOutputToUser(cmd)
+	mgr.PrintOutputToUser(cmd)
 
 	return run.Run(cmd)
 }

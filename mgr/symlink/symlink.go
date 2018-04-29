@@ -1,10 +1,10 @@
 package symlink
 
 import (
-	"errors"
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/mbark/punkt/conf"
@@ -67,14 +67,14 @@ func (mgr symlinkManager) New(target, link string) *Symlink {
 func (mgr symlinkManager) Remove(link string) (*Symlink, error) {
 	target, err := mgr.config.Fs.Readlink(link)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to read link [link: %s]", link)
 	}
 
 	symlink := mgr.New(target, link)
 
 	err = mgr.config.Fs.Remove(link)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to remove file [link: %s]", link)
 	}
 
 	return symlink, mgr.config.Fs.Rename(target, link)
@@ -110,7 +110,7 @@ func (mgr symlinkManager) Ensure(symlink *Symlink) error {
 	if linkexists && !targetexists {
 		err := path.CreateNecessaryDirectories(mgr.config.Fs, symlink.Target)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "failed to create necessary directories [path: %s]", symlink.Target)
 		}
 
 		logger.Debug("target doesn't exist, assuming link is the target")
@@ -119,13 +119,13 @@ func (mgr symlinkManager) Ensure(symlink *Symlink) error {
 			logrus.WithFields(logrus.Fields{
 				"symlink": symlink,
 			}).WithError(err).Error("unable to move link to target location")
-			return err
+			return errors.Wrapf(err, "failed to rename link to target [link: %s, target: %s]", symlink.Link, symlink.Target)
 		}
 	}
 
 	err := path.CreateNecessaryDirectories(mgr.config.Fs, symlink.Link)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to create necessary directories [path: %s]", symlink.Link)
 	}
 
 	logger.Info("creating symlink")

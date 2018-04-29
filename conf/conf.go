@@ -1,7 +1,6 @@
 package conf
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -9,6 +8,7 @@ import (
 	"time"
 
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"gopkg.in/src-d/go-billy.v4"
@@ -30,15 +30,20 @@ type Config struct {
 }
 
 // NewConfig builds a new configuration object from the given parameters
-func NewConfig(configFile string) *Config {
-	readConfigFile(configFile)
+func NewConfig(configFile string) (*Config, error) {
+	err := readConfigFile(configFile)
+	if err != nil {
+		return nil, err
+	}
+
 	setLogLevel()
 	configureLogFiles()
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		logrus.WithError(err).Fatal("Unable to determine working directory")
+		return nil, err
 	}
+
 	fs := osfs.New("/")
 
 	return &Config{
@@ -49,14 +54,13 @@ func NewConfig(configFile string) *Config {
 		Fs:         fs,
 		Command:    exec.Command,
 		Managers:   readManagers(fs),
-	}
+	}, nil
 }
 
-func readConfigFile(configFile string) {
+func readConfigFile(configFile string) error {
 	abs, err := filepath.Abs(configFile)
 	if err != nil {
-		fmt.Printf("Failed to make %s an absolute path: %s\n", configFile, err)
-		return
+		return errors.Wrapf(err, "failed to make config file path absolute: [file: %s]", configFile)
 	}
 
 	base := filepath.Base(abs)
@@ -66,9 +70,8 @@ func readConfigFile(configFile string) {
 	viper.SetConfigName(fileName)
 	viper.AddConfigPath(path)
 
-	if err := viper.ReadInConfig(); err != nil {
-		fmt.Printf("Failed to read config file %s: %s\n", configFile, err)
-	}
+	err = viper.ReadInConfig()
+	return errors.Wrapf(err, "failed to read configuration [file: %s]", configFile)
 }
 
 func setLogLevel() {

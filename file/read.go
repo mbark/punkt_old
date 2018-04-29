@@ -2,10 +2,9 @@ package file
 
 import (
 	"bytes"
-	"errors"
 
 	"github.com/BurntSushi/toml"
-	"github.com/sirupsen/logrus"
+	"github.com/pkg/errors"
 	"gopkg.in/src-d/go-billy.v4"
 )
 
@@ -13,14 +12,9 @@ import (
 var ErrNoSuchFile = errors.New("file doesn't exist")
 
 func open(fs billy.Filesystem, path string) (*bytes.Buffer, error) {
-	logger := logrus.WithFields(logrus.Fields{
-		"file": path,
-	})
-
 	file, err := fs.Open(path)
 	if err != nil {
-		logger.WithError(err).Warning("Unable to open file")
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to open file [file: %s]", path)
 	}
 
 	defer file.Close()
@@ -28,7 +22,7 @@ func open(fs billy.Filesystem, path string) (*bytes.Buffer, error) {
 	buf := new(bytes.Buffer)
 	_, err = buf.ReadFrom(file)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to read from file [file: %s]", path)
 	}
 
 	return buf, nil
@@ -43,15 +37,12 @@ func ReadToml(fs billy.Filesystem, out interface{}, file string) error {
 
 	buf, err := open(fs, file)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to open file [file: %s]", file)
 	}
 
 	err = toml.Unmarshal(buf.Bytes(), out)
 	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"file": file,
-		}).WithError(err).Error("Unable to unmarshal file to yaml")
-		return err
+		return errors.Wrapf(err, "failed to unmarshal file [file: %s]", file)
 	}
 
 	return nil

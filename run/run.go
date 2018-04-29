@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -51,7 +52,7 @@ func WithCapture(cmd *exec.Cmd) (*bytes.Buffer, error) {
 	err := cmd.Start()
 	if err != nil {
 		logger.WithError(err).Error("Failed to start command")
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to start command [command: %v]", cmd)
 	}
 
 	var stdoutErr error
@@ -65,7 +66,7 @@ func WithCapture(cmd *exec.Cmd) (*bytes.Buffer, error) {
 	err = cmd.Wait()
 	if err != nil {
 		logger.WithError(err).Error("Unable to run command")
-		return nil, err
+		return nil, errors.Wrapf(err, "command failed [command: %v]", cmd)
 	}
 
 	return &stdoutBuf, nil
@@ -79,8 +80,7 @@ func Run(cmd *exec.Cmd) error {
 	err := cmd.Run()
 
 	if err != nil {
-		logger.WithError(err).Error("Unable to run command")
-		return err
+		return errors.Wrapf(err, "command failed [command: %v]", cmd)
 	}
 
 	logger.WithField("rawCmd", cmd).Debug("Command finished without error")

@@ -2,11 +2,11 @@ package git
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 
 	"github.com/BurntSushi/toml"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/mbark/punkt/mgr/symlink"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	gitconf "gopkg.in/src-d/go-git.v4/config"
 
@@ -67,7 +67,7 @@ func (mgr Manager) Name() string {
 func (mgr Manager) Add(path string) error {
 	repo, err := mgr.RepoManager.Dump(path)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to dump repository at path: %s", path)
 	}
 
 	config := mgr.readConfig()
@@ -100,46 +100,34 @@ func (mgr Manager) Remove(path string) error {
 
 // Update ...
 func (mgr Manager) Update() error {
-	failed := []string{}
-
+	var result error
 	for _, repo := range mgr.readConfig().Repositories {
 		_, err := mgr.RepoManager.Update(repo.Path)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"repo": repo,
 			}).WithError(err).Error("Unable to update git repository")
-			failed = append(failed, repo.Name)
-			continue
+			result = multierror.Append(result, err)
 		}
 	}
 
-	if len(failed) > 0 {
-		return fmt.Errorf("unable to update the following repos: %v", failed)
-	}
-
-	return nil
+	return result
 }
 
 // Ensure ...
 func (mgr Manager) Ensure() error {
-	failed := []string{}
-
+	var result error
 	for _, repo := range mgr.readConfig().Repositories {
 		err := mgr.RepoManager.Ensure(repo)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"repo": repo,
 			}).WithError(err).Error("Failed to ensure git repository")
-			failed = append(failed, repo.Name)
-			continue
+			result = multierror.Append(result, err)
 		}
 	}
 
-	if len(failed) > 0 {
-		return fmt.Errorf("The following repos failed to update: %v", failed)
-	}
-
-	return nil
+	return result
 }
 
 // Dump ...
@@ -167,5 +155,5 @@ func (mgr Manager) Dump() (string, error) {
 	encoder := toml.NewEncoder(&out)
 	err := encoder.Encode(config)
 
-	return out.String(), err
+	return out.String(), errors.Wrap(err, "failed to encode git-configuration")
 }

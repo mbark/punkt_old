@@ -3,6 +3,7 @@ package git
 import (
 	"path/filepath"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	billy "gopkg.in/src-d/go-billy.v4"
 	git "gopkg.in/src-d/go-git.v4"
@@ -33,17 +34,17 @@ func (mgr goGitRepoManager) storage(dir string) (storage.Storer, billy.Filesyste
 	logrus.WithField("dir", dir).Debug("Constructing storage for directory")
 	worktree, err := mgr.fs.Chroot(dir)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "failed to chroot [path: %s]", dir)
 	}
 
 	dotGit, err := worktree.Chroot(".git")
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "failed to chroot to .git [path: %s]", dir)
 	}
 
 	storage, err := filesystem.NewStorage(dotGit)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "failed to create new store [path: %s]", dir)
 	}
 
 	return storage, worktree, nil
@@ -52,10 +53,7 @@ func (mgr goGitRepoManager) storage(dir string) (storage.Storer, billy.Filesyste
 func (mgr goGitRepoManager) open(dir string) (*git.Repository, error) {
 	storage, worktree, err := mgr.storage(dir)
 	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"directory": dir,
-		}).WithError(err).Debug("Failed to create storage for repository")
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to create storage [path: %s]", dir)
 	}
 
 	return git.Open(storage, worktree)
@@ -65,17 +63,17 @@ func (mgr goGitRepoManager) open(dir string) (*git.Repository, error) {
 func (mgr goGitRepoManager) Dump(dir string) (*Repo, error) {
 	repository, err := mgr.open(dir)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to open repo at [path: %s]", dir)
 	}
 
 	config, err := repository.Config()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to get repository configuration [path: %s]", dir)
 	}
 
 	dir, err = filepath.Abs(dir)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "unable to path absolute [path: %s]", dir)
 	}
 
 	return &Repo{
@@ -100,8 +98,7 @@ func (mgr goGitRepoManager) Ensure(repo Repo) error {
 
 	storage, worktree, err := mgr.storage(repo.Path)
 	if err != nil {
-		logger.WithError(err).Error("unable to allocate storage for repository")
-		return err
+		return errors.Wrapf(err, "failed to get storage [path: %s]", repo.Path)
 	}
 
 	remote := repo.Config.Remotes[git.DefaultRemoteName].URLs[0]
@@ -112,14 +109,12 @@ func (mgr goGitRepoManager) Ensure(repo Repo) error {
 		URL: remote,
 	})
 	if err != nil {
-		logger.WithError(err).Error("unable to clone repository")
-		return err
+		return errors.Wrapf(err, "failed to clone repository [path: %s]", repo.Path)
 	}
 
 	err = repository.Storer.SetConfig(repo.Config)
 	if err != nil {
-		logger.WithError(err).Error("unable to set configuration for repository")
-		return err
+		return errors.Wrapf(err, "unable to set repository's configuration [path: %s]", repo.Path)
 	}
 
 	return nil
@@ -132,14 +127,12 @@ func (mgr goGitRepoManager) Update(dir string) (bool, error) {
 
 	repository, err := mgr.open(dir)
 	if err != nil {
-		logger.WithError(err).Error("unable to open git repository")
-		return false, err
+		return false, errors.Wrapf(err, "failed to open git repository [path: %s]", dir)
 	}
 
 	w, err := repository.Worktree()
 	if err != nil {
-		logger.WithError(err).Error("unable to get worktree for repository")
-		return false, err
+		return false, errors.Wrapf(err, "failed to get worktree for repository [path: %s]", dir)
 	}
 
 	updated := true
@@ -149,8 +142,7 @@ func (mgr goGitRepoManager) Update(dir string) (bool, error) {
 			logger.Info("repository is already up to date")
 			updated = false
 		} else {
-			logger.WithError(err).Error("unable to update repository")
-			return false, err
+			return false, errors.Wrapf(err, "failed to update repository [path: %s]", dir)
 		}
 	}
 

@@ -1,6 +1,7 @@
 package generic_test
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -8,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/mbark/punkt/conf"
-	"github.com/mbark/punkt/mgr"
 	"github.com/mbark/punkt/mgr/generic"
+	"github.com/mbark/punkt/run"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
@@ -21,11 +22,21 @@ func TestMgr(t *testing.T) {
 	RunSpecs(t, "Generic Suite")
 }
 
+func mockRun(mgr *generic.Manager) {
+	mgr.PrintOutputToUser = func(c *exec.Cmd) {}
+	mgr.WithCapture = func(cmd *exec.Cmd) (*bytes.Buffer, error) {
+		out, _ := run.CaptureOutput(cmd)
+		err := run.Run(cmd)
+
+		return out, err
+	}
+}
+
 const name = "generic"
 
 var _ = Describe("Generic Manager", func() {
 	var config *conf.Config
-	var mgr mgr.Manager
+	var mgr *generic.Manager
 	var configFile string
 
 	BeforeEach(func() {
@@ -47,6 +58,7 @@ var _ = Describe("Generic Manager", func() {
 
 		configFile = filepath.Join(config.PunktHome, name+".toml")
 		mgr = generic.NewManager(*config, configFile, name)
+		mockRun(mgr)
 	})
 
 	// TODO: test for having no command?
@@ -73,6 +85,7 @@ var _ = Describe("Generic Manager", func() {
 		It("should prefer using 'dump' over 'command'", func() {
 			config.Managers[name]["dump"] = "foo"
 			mgr = generic.NewManager(*config, configFile, name)
+			mockRun(mgr)
 
 			out, err := mgr.Dump()
 			Expect(err).To(BeNil())

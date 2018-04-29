@@ -1,9 +1,9 @@
 package symlink
 
 import (
-	"fmt"
 	"path/filepath"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/mbark/punkt/conf"
@@ -46,7 +46,7 @@ func (mgr Manager) Add(target, newLocation string) (*Symlink, error) {
 	symlink := mgr.LinkManager.New(newLocation, target)
 	err := mgr.LinkManager.Ensure(symlink)
 	if err != nil {
-		return symlink, err
+		return nil, errors.Wrapf(err, "failed to ensure symlink exists [symlink: %v]", symlink)
 	}
 
 	return symlink, mgr.saveSymlink(symlink)
@@ -56,8 +56,7 @@ func (mgr Manager) saveSymlink(new *Symlink) error {
 	var saved Config
 	err := file.ReadToml(mgr.config.Fs, &saved, mgr.configFile)
 	if err != nil && err != file.ErrNoSuchFile {
-		logrus.WithError(err).WithField("symlink", new).Error("unable to read file containing all symlinks, assuming non exists")
-		return err
+		return errors.Wrapf(err, "unable to read symlink configuration file [configFile: %s]", mgr.configFile)
 	}
 
 	unexpanded := mgr.LinkManager.Unexpand(*new)
@@ -79,7 +78,7 @@ func (mgr Manager) saveSymlink(new *Symlink) error {
 func (mgr Manager) Remove(link string) error {
 	s, err := mgr.LinkManager.Remove(link)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to remove symlink [link: %s]", link)
 	}
 
 	return mgr.removeFromConfiguration(*s)
@@ -130,32 +129,5 @@ func (mgr Manager) Dump() (string, error) { return "", nil }
 // Update ...
 func (mgr Manager) Update() error { return nil }
 
-// Ensure goes through the list of symlinks ensuring they exist
-func (mgr Manager) Ensure() error {
-	var config Config
-	err := file.ReadToml(mgr.config.Fs, &config, mgr.configFile)
-	if err != nil {
-		if err == file.ErrNoSuchFile {
-			return nil
-		}
-
-		return err
-	}
-
-	failed := []Symlink{}
-	for _, symlink := range config.Symlinks {
-		s := mgr.LinkManager.New(symlink.Target, symlink.Link)
-		err = mgr.LinkManager.Ensure(s)
-		logrus.WithError(err).WithField("symlink", symlink).Info("foo")
-		if err != nil {
-			logrus.WithField("symlink", symlink).WithError(err).Error("failed to ensure symlink")
-			failed = append(failed, symlink)
-		}
-	}
-
-	if len(failed) > 0 {
-		return fmt.Errorf("The following symlinks could not be created: %v", failed)
-	}
-
-	return nil
-}
+// Ensure ...
+func (mgr Manager) Ensure() error { return nil }

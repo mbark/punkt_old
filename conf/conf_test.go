@@ -26,10 +26,10 @@ var _ = Describe("Manager", func() {
 		logrus.SetLevel(logrus.PanicLevel)
 	})
 
-	It("should use defaults if the config file doesn't exist", func() {
-		config := conf.NewConfig("")
-		Expect(config).NotTo(BeNil())
-		Expect(logrus.GetLevel()).To(Equal(logrus.InfoLevel))
+	It("should fail if the config file doesn't exist", func() {
+		config, err := conf.NewConfig("")
+		Expect(config).To(BeNil())
+		Expect(err).NotTo(BeNil())
 	})
 
 	Context("with an existing config file", func() {
@@ -66,9 +66,10 @@ var _ = Describe("Manager", func() {
 		})
 
 		It("should read the given config file", func() {
-			config := conf.NewConfig(configFile)
+			config, err := conf.NewConfig(configFile)
 
 			Expect(config).NotTo(BeNil())
+			Expect(err).To(BeNil())
 			Expect(logrus.GetLevel()).To(Equal(logrus.WarnLevel))
 			Expect(config.Dotfiles).To(Equal(savedConfig["dotfiles"]))
 			Expect(config.PunktHome).To(Equal(savedConfig["punktHome"]))
@@ -80,9 +81,10 @@ var _ = Describe("Manager", func() {
 			relPath, err := filepath.Rel(wd, configFile)
 			Expect(err).To(BeNil())
 
-			config := conf.NewConfig(relPath)
+			config, err := conf.NewConfig(relPath)
 
 			Expect(config).NotTo(BeNil())
+			Expect(err).To(BeNil())
 			Expect(logrus.GetLevel()).To(Equal(logrus.WarnLevel))
 			Expect(config.Dotfiles).To(Equal(savedConfig["dotfiles"]))
 			Expect(config.PunktHome).To(Equal(savedConfig["punktHome"]))
@@ -93,8 +95,9 @@ var _ = Describe("Manager", func() {
 			err := file.SaveToml(fs, savedConfig, filepath.Join(dir, "config.toml"))
 			Expect(err).To(BeNil())
 
-			conf.NewConfig(configFile)
+			_, err = conf.NewConfig(configFile)
 			Expect(logrus.GetLevel()).To(Equal(logrus.InfoLevel))
+			Expect(err).To(BeNil())
 		})
 
 		It("should read the managers.toml file for manager configuration", func() {
@@ -106,8 +109,9 @@ var _ = Describe("Manager", func() {
 			err := file.SaveToml(fs, mgrs, filepath.Join(home, "managers.toml"))
 			Expect(err).To(BeNil())
 
-			config := conf.NewConfig(configFile)
+			config, err := conf.NewConfig(configFile)
 			Expect(config.Managers).To(Equal(mgrs))
+			Expect(err).To(BeNil())
 		})
 	})
 })
