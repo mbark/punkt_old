@@ -179,6 +179,11 @@ var _ = Describe("Symlink: Manager", func() {
 
 			Expect(mgr.Remove(s.Link)).NotTo(Succeed())
 		})
+
+		It("should handle relative paths", func() {
+			linkMgr.On("Remove", filepath.Join(config.WorkingDir, "link")).Return(new(symlink.Symlink), nil)
+			Expect(mgr.Remove("link")).To(Succeed())
+		})
 	})
 })
 

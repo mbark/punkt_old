@@ -43,6 +43,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+	RootCmd.Version = "0.0.1"
 
 	RootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", configFile, `The configuration file to read custom configuration from`)
 	RootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "info", `Set the logging level ("debug"|"info"|"warn"|"error"|"fatal")`)

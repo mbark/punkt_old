@@ -107,6 +107,10 @@ func (mgr symlinkManager) Ensure(symlink *Symlink) error {
 		targetexists = true
 	}
 
+	if !linkexists && !targetexists {
+		return errors.Errorf("neither link nor target exists [link: %s, target: %s]", symlink.Link, symlink.Target)
+	}
+
 	if linkexists && !targetexists {
 		err := path.CreateNecessaryDirectories(mgr.config.Fs, symlink.Target)
 		if err != nil {

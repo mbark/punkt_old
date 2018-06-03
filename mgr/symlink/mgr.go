@@ -76,6 +76,11 @@ func (mgr Manager) saveSymlink(new *Symlink) error {
 
 // Remove ...
 func (mgr Manager) Remove(link string) error {
+	if !filepath.IsAbs(link) {
+		logrus.WithField("link", link).Info("non absolute-link provided")
+		link = mgr.config.Fs.Join(mgr.config.WorkingDir, link)
+	}
+
 	s, err := mgr.LinkManager.Remove(link)
 	if err != nil {
 		return errors.Wrapf(err, "failed to remove symlink [link: %s]", link)

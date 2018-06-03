@@ -68,12 +68,6 @@ var _ = Describe("Symlink: Link Manager", func() {
 
 			Expect(s.Target).To(Equal(""))
 		})
-
-		It("should keep an empty string if the target can't be made relative", func() {
-			s := mgr.New(".", "")
-
-			Expect(s.Link).To(Equal(""))
-		})
 	})
 
 	var _ = Context("Remove", func() {
@@ -155,12 +149,9 @@ var _ = Describe("Symlink: Link Manager", func() {
 			Expect(mgr.Ensure(&symlink.Symlink{Target: target, Link: link})).NotTo(Succeed())
 		})
 
-		It("should succeed even if symlinking to a non-existant file", func() {
+		It("should fail if neither of the two files exist", func() {
 			link := &symlink.Symlink{Target: "/target", Link: "/link"}
-			Expect(mgr.Ensure(link)).To(Succeed())
-
-			_, err := config.Fs.Readlink("/link")
-			Expect(err).To(BeNil())
+			Expect(mgr.Ensure(link)).NotTo(Succeed())
 		})
 	})
 

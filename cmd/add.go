@@ -13,7 +13,7 @@ var addCmd = &cobra.Command{
 }
 
 var addSymlinkCmd = &cobra.Command{
-	Use:   "symlink",
+	Use:   "symlink target [new-location]",
 	Short: "store target in dotfile's directory and link to it",
 	Args:  cobra.RangeArgs(1, 2),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -22,7 +22,7 @@ var addSymlinkCmd = &cobra.Command{
 }
 
 var addGitCmd = &cobra.Command{
-	Use:   "repository",
+	Use:   "repository path",
 	Short: "add the given repository to your dotfiles-managed git repos",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -43,12 +43,9 @@ func addSymlink(cmd *cobra.Command, args []string) {
 	}
 
 	mgr := rootMgr.Symlink()
-	link, err := mgr.Add(args[0], newLocation)
+	_, err := mgr.Add(args[0], newLocation)
 	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"target": link.Target,
-			"link":   link.Link,
-		}).WithError(err).Error("failed to add symlink")
+		logrus.WithError(err).Error("failed to add symlink")
 		os.Exit(1)
 	}
 }
@@ -57,6 +54,7 @@ func addGit(cmd *cobra.Command, args []string) {
 	mgr := rootMgr.Git()
 	err := mgr.Add(args[0])
 	if err != nil {
+		logrus.WithError(err).Error("failed to add git repo")
 		os.Exit(1)
 	}
 }
