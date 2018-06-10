@@ -101,7 +101,6 @@ var _ = Describe("Manager", func() {
 		})
 
 		It("should read the managers.toml file for manager configuration", func() {
-			logrus.SetLevel(logrus.DebugLevel)
 			mgrs := make(map[string]map[string]string)
 			mgrs["foo"] = make(map[string]string)
 			mgrs["foo"]["command"] = "bar"

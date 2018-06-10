@@ -17,7 +17,7 @@ func (m *MockLinkManager) New(target, link string) *symlink.Symlink {
 }
 
 // Remove ...
-func (m *MockLinkManager) Remove(link string) (*symlink.Symlink, error) {
+func (m *MockLinkManager) Remove(link, target string) (*symlink.Symlink, error) {
 	args := m.Called(link)
 	return args.Get(0).(*symlink.Symlink), args.Error(1)
 }

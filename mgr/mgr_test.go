@@ -3,6 +3,7 @@ package mgr_test
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"testing"
 
 	"github.com/BurntSushi/toml"
@@ -17,6 +18,7 @@ import (
 	"github.com/mbark/punkt/mgr"
 	"github.com/mbark/punkt/mgr/symlink"
 	"github.com/mbark/punkt/mgr/symlink/symlinktest"
+	"github.com/mbark/punkt/printer"
 )
 
 type managerConfig struct {
@@ -62,6 +64,7 @@ var _ = Describe("Manager", func() {
 
 	BeforeEach(func() {
 		logrus.SetLevel(logrus.PanicLevel)
+		printer.Log.Out = ioutil.Discard
 
 		mgrs := make(map[string]map[string]string)
 		mgrs[name] = make(map[string]string)

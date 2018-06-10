@@ -20,3 +20,7 @@
   * [x] generic
     * [x] add a generic manager which proxies via the given configuration
   * [x] clean up code and remove code duplication
+* [ ] printing
+  * [x] use a user-facing logger that looks good
+  * [x] look at `yarn` for other ideas (timing, emojis etc)
+  * [ ] spread log messages throughout the app

@@ -1,13 +1,15 @@
 package symlink
 
 import (
-	"path/filepath"
+	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/mbark/punkt/conf"
 	"github.com/mbark/punkt/file"
+	"github.com/mbark/punkt/path"
+	"github.com/mbark/punkt/printer"
 )
 
 // Manager ...
@@ -28,6 +30,10 @@ type Config struct {
 	Symlinks []Symlink
 }
 
+func (symlink Symlink) String() string {
+	return fmt.Sprintf("%s -> %s", symlink.Link, symlink.Target)
+}
+
 // NewManager ...
 func NewManager(c conf.Config, configFile string) *Manager {
 	return &Manager{
@@ -39,64 +45,118 @@ func NewManager(c conf.Config, configFile string) *Manager {
 
 // Add ...
 func (mgr Manager) Add(target, newLocation string) (*Symlink, error) {
-	if !filepath.IsAbs(target) {
-		target = mgr.config.Fs.Join(mgr.config.WorkingDir, target)
-	}
-
-	symlink := mgr.LinkManager.New(newLocation, target)
-	err := mgr.LinkManager.Ensure(symlink)
+	absTarget, err := path.AsAbsolute(mgr.config.Fs, mgr.config.WorkingDir, target)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to ensure symlink exists [symlink: %v]", symlink)
+		printer.Log.Error("target file or directory does not exist: {fg 1}%s", target)
+		return nil, err
 	}
 
-	return symlink, mgr.saveSymlink(symlink)
+	symlink := mgr.LinkManager.New(newLocation, absTarget)
+	err = mgr.LinkManager.Ensure(symlink)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to ensure %s exists", symlink)
+	}
+
+	storedLink, err := mgr.addToConfiguration(symlink)
+	if err == nil {
+		printer.Log.Success("symlink added: {fg 2}%s", storedLink)
+	}
+
+	return symlink, err
 }
 
-func (mgr Manager) saveSymlink(new *Symlink) error {
-	var saved Config
-	err := file.ReadToml(mgr.config.Fs, &saved, mgr.configFile)
+// Remove ...
+func (mgr Manager) Remove(link string) error {
+	absLink, err := path.AsAbsolute(mgr.config.Fs, mgr.config.WorkingDir, link)
+	if err != nil {
+		printer.Log.Error("file does not exist: {fg 1}%s", link)
+		return err
+	}
+
+	config, err := mgr.readConfiguration()
 	if err != nil && err != file.ErrNoSuchFile {
-		return errors.Wrapf(err, "unable to read symlink configuration file [configFile: %s]", mgr.configFile)
+		printer.Log.Error("unable to read configuration file, error was: {fg 1}%s", err)
+	}
+
+	link = path.UnexpandHome(absLink, mgr.config.UserHome)
+	var matchingSymlink *Symlink
+	for _, symlink := range config.Symlinks {
+		if symlink.Link == link {
+			printer.Log.Success("found in configuration file, target is: {fg 2}%s", symlink.Target)
+			matchingSymlink = &symlink
+		}
+	}
+
+	if matchingSymlink == nil {
+		printer.Log.Error("unable to find symlink in configuration file: {fg 1}%s", path.UnexpandHome(mgr.configFile, mgr.config.UserHome))
+		return errors.Errorf("unable to find link %s in configuration", link)
+	}
+
+	symlink := mgr.LinkManager.Expand(*matchingSymlink)
+
+	s, err := mgr.LinkManager.Remove(absLink, symlink.Target)
+	if err != nil {
+		printer.Log.Error("failed to remove link, error was: {fg 1}%s", err)
+		err = errors.Wrapf(err, "failed to remove link %s", link)
+		return err
+	}
+
+	removedLink, err := mgr.removeFromConfiguration(*s)
+	if err == nil {
+		printer.Log.Success("symlink removed: {fg 2}%s", removedLink)
+	}
+
+	return err
+}
+
+func (mgr Manager) readConfiguration() (Config, error) {
+	var savedConfig Config
+	err := file.ReadToml(mgr.config.Fs, &savedConfig, mgr.configFile)
+	if err != nil {
+		logger := logrus.WithField("configFile", mgr.configFile).WithError(err)
+		if err == file.ErrNoSuchFile {
+			location := path.UnexpandHome(mgr.configFile, mgr.config.UserHome)
+			printer.Log.Note("no symlink configuration file at {fg 5}%s", location)
+			logger.Warn("no configuration file found")
+		} else {
+			logger.Error("unable to read symlink configuration file")
+		}
+	}
+
+	return savedConfig, err
+}
+
+func (mgr Manager) addToConfiguration(new *Symlink) (*Symlink, error) {
+	logrus.WithField("newSymlink", new).Info("Storing symlink in configuration")
+	saved, err := mgr.readConfiguration()
+	if err != nil && err != file.ErrNoSuchFile {
+		return nil, err
 	}
 
 	unexpanded := mgr.LinkManager.Unexpand(*new)
 	for _, existing := range saved.Symlinks {
 		if unexpanded.Target == existing.Target && unexpanded.Link == existing.Link {
+			printer.Log.Note("symlink is already stored")
 			logrus.WithField("symlink", unexpanded).Info("symlink already saved, nothing new to store")
-			return nil
+			return unexpanded, nil
 		}
 	}
 
 	saved.Symlinks = append(saved.Symlinks, *unexpanded)
-	logrus.WithFields(logrus.Fields{
-		"symlinks": saved,
-	}).Debug("Storing updated list of symlinks")
-	return file.SaveToml(mgr.config.Fs, saved, mgr.configFile)
+
+	logrus.WithField("symlinks", saved).Debug("storing updated list of symlinks")
+	return unexpanded, file.SaveToml(mgr.config.Fs, saved, mgr.configFile)
 }
 
-// Remove ...
-func (mgr Manager) Remove(link string) error {
-	if !filepath.IsAbs(link) {
-		logrus.WithField("link", link).Info("non absolute-link provided")
-		link = mgr.config.Fs.Join(mgr.config.WorkingDir, link)
-	}
-
-	s, err := mgr.LinkManager.Remove(link)
-	if err != nil {
-		return errors.Wrapf(err, "failed to remove symlink [link: %s]", link)
-	}
-
-	return mgr.removeFromConfiguration(*s)
-}
-
-func (mgr Manager) removeFromConfiguration(symlink Symlink) error {
+func (mgr Manager) removeFromConfiguration(symlink Symlink) (*Symlink, error) {
 	var config Config
 	err := file.ReadToml(mgr.config.Fs, &config, mgr.configFile)
 	if err == file.ErrNoSuchFile {
 		logrus.WithFields(logrus.Fields{
 			"configFile": mgr.configFile,
 		}).WithError(err).Warn("no configuration file found, configuration won't be updated")
-		return nil
+		// TODO: return a special error for this case
+		return nil, nil
 	}
 
 	unexpanded := mgr.LinkManager.Unexpand(symlink)
@@ -116,11 +176,11 @@ func (mgr Manager) removeFromConfiguration(symlink Symlink) error {
 			"symlink": symlink,
 			"config":  config,
 		}).Warn("symlink not found in configuration, not removing")
-		return nil
+		return unexpanded, nil
 	}
 
 	config.Symlinks = append(config.Symlinks[:index], config.Symlinks[index+1:]...)
-	return file.SaveToml(mgr.config.Fs, config, mgr.configFile)
+	return unexpanded, file.SaveToml(mgr.config.Fs, config, mgr.configFile)
 }
 
 // Name ...

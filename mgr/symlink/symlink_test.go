@@ -1,11 +1,13 @@
 package symlink_test
 
 import (
+	"io/ioutil"
 	"path/filepath"
 	"testing"
 
 	"github.com/mbark/punkt/conf"
 	"github.com/mbark/punkt/mgr/symlink"
+	"github.com/mbark/punkt/printer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
@@ -23,6 +25,7 @@ var _ = Describe("Symlink: Link Manager", func() {
 
 	BeforeEach(func() {
 		logrus.SetLevel(logrus.PanicLevel)
+		printer.Log.Out = ioutil.Discard
 		config = &conf.Config{
 			UserHome:   "/home",
 			PunktHome:  "/home/.config/punkt",
@@ -83,7 +86,7 @@ var _ = Describe("Symlink: Link Manager", func() {
 			s := mgr.New("", link)
 			Expect(mgr.Ensure(s)).To(Succeed())
 
-			_, err := mgr.Remove(link)
+			_, err := mgr.Remove(s.Link, s.Target)
 			Expect(err).To(BeNil())
 
 			_, err = config.Fs.Readlink(link)
@@ -93,7 +96,7 @@ var _ = Describe("Symlink: Link Manager", func() {
 		})
 
 		It("should fail if given link isn't a symlink", func() {
-			_, err := mgr.Remove(link)
+			_, err := mgr.Remove(link, "")
 			Expect(err).NotTo(BeNil())
 		})
 	})
@@ -149,9 +152,9 @@ var _ = Describe("Symlink: Link Manager", func() {
 			Expect(mgr.Ensure(&symlink.Symlink{Target: target, Link: link})).NotTo(Succeed())
 		})
 
-		It("should fail if neither of the two files exist", func() {
+		It("should succeed even if neither of the two files exist", func() {
 			link := &symlink.Symlink{Target: "/target", Link: "/link"}
-			Expect(mgr.Ensure(link)).NotTo(Succeed())
+			Expect(mgr.Ensure(link)).To(Succeed())
 		})
 	})
 

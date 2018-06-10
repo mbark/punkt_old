@@ -9,6 +9,7 @@ import (
 
 	"github.com/mbark/punkt/conf"
 	"github.com/mbark/punkt/path"
+	"github.com/mbark/punkt/printer"
 )
 
 var (
@@ -19,7 +20,7 @@ var (
 // LinkManager ...
 type LinkManager interface {
 	New(target, link string) *Symlink
-	Remove(string) (*Symlink, error)
+	Remove(string, string) (*Symlink, error)
 	Ensure(symlink *Symlink) error
 	Unexpand(symlink Symlink) *Symlink
 	Expand(symlink Symlink) *Symlink
@@ -64,20 +65,28 @@ func (mgr symlinkManager) New(target, link string) *Symlink {
 }
 
 // Remove ...
-func (mgr symlinkManager) Remove(link string) (*Symlink, error) {
-	target, err := mgr.config.Fs.Readlink(link)
+func (mgr symlinkManager) Remove(link, target string) (*Symlink, error) {
+	foundTarget, err := mgr.config.Fs.Readlink(link)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read link [link: %s]", link)
+		logrus.WithField("link", link).WithError(err).Error("unable to readlink")
+		return nil, errors.Errorf("the given link is not a symlink: %s", link)
 	}
 
-	symlink := mgr.New(target, link)
+	if foundTarget != target {
+		return nil, errors.Errorf("expected symlink target to be: %s but was: %s", target, foundTarget)
+	}
 
 	err = mgr.config.Fs.Remove(link)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to remove file [link: %s]", link)
+		return nil, errors.Wrapf(err, "failed to remove %s", link)
 	}
 
-	return symlink, mgr.config.Fs.Rename(target, link)
+	err = mgr.config.Fs.Rename(target, link)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to move %s to %s location", target, link)
+	}
+
+	return mgr.New(target, link), nil
 }
 
 // Ensure the existence of the symlink. If the symlink already
@@ -94,6 +103,7 @@ func (mgr symlinkManager) Ensure(symlink *Symlink) error {
 	})
 
 	if mgr.exists(symlink) {
+		printer.Log.Note("symlink exists: {fg 2}%s", mgr.Unexpand(*symlink))
 		return nil
 	}
 
@@ -107,32 +117,33 @@ func (mgr symlinkManager) Ensure(symlink *Symlink) error {
 		targetexists = true
 	}
 
-	if !linkexists && !targetexists {
-		return errors.Errorf("neither link nor target exists [link: %s, target: %s]", symlink.Link, symlink.Target)
-	}
+	logger.WithFields(logrus.Fields{
+		"linkExists":   linkexists,
+		"targetExists": targetexists,
+	}).Debug("status of symlink")
 
 	if linkexists && !targetexists {
+		logger.Debug("link exists but target doesn't, moving link -> target")
+
 		err := path.CreateNecessaryDirectories(mgr.config.Fs, symlink.Target)
 		if err != nil {
-			return errors.Wrapf(err, "failed to create necessary directories [path: %s]", symlink.Target)
+			return err
 		}
 
-		logger.Debug("target doesn't exist, assuming link is the target")
 		err = mgr.config.Fs.Rename(symlink.Link, symlink.Target)
 		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"symlink": symlink,
-			}).WithError(err).Error("unable to move link to target location")
-			return errors.Wrapf(err, "failed to rename link to target [link: %s, target: %s]", symlink.Link, symlink.Target)
+			logger.WithError(err).Error("unable to move link to target location")
+			return errors.Wrapf(err, "failed to rename %s to %s", symlink.Link, symlink.Target)
 		}
 	}
 
 	err := path.CreateNecessaryDirectories(mgr.config.Fs, symlink.Link)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create necessary directories [path: %s]", symlink.Link)
+		return err
 	}
 
 	logger.Info("creating symlink")
+	printer.Log.Note("creating symlink: {fg 2}%s", mgr.Unexpand(*symlink))
 	return mgr.config.Fs.Symlink(symlink.Target, symlink.Link)
 }
 

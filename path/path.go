@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mbark/punkt/printer"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-billy.v4"
 )
@@ -14,16 +16,36 @@ import (
 // write to the file
 func CreateNecessaryDirectories(fs billy.Filesystem, file string) error {
 	dir := filepath.Dir(file)
-	logrus.WithField("dir", dir).Debug("Creating required directories")
+	logrus.WithField("dir", dir).Debug("creating required directories")
 
-	return fs.MkdirAll(dir, os.ModePerm)
+	err := fs.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		printer.Log.Error("unable to create directories %s", dir)
+		logrus.WithField("dir", dir).WithError(err).Error("unable to create necessary directories")
+		return errors.Wrapf(err, "unable to create directories")
+	}
+
+	return nil
+}
+
+// AsAbsolute makes sure the given file is transformed to an absolute path, it
+// also checks if the given file exists -- otherwiser returning an error. If this
+// check isn't relevant it can just be ignored: the given path is still absolute.
+func AsAbsolute(fs billy.Filesystem, workingDir, file string) (string, error) {
+	abs := file
+	if !filepath.IsAbs(file) {
+		abs = fs.Join(workingDir, file)
+	}
+
+	_, err := fs.Stat(abs)
+	return abs, err
 }
 
 // GetUserHome returns the user's home directory
 func GetUserHome() string {
 	usr, err := user.Current()
 	if err != nil {
-		logrus.WithError(err).Fatal("Unable to get user home")
+		logrus.WithError(err).Fatal("unable to get user home")
 		return ""
 	}
 

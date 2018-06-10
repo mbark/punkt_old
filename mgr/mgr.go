@@ -2,6 +2,7 @@ package mgr
 
 import (
 	"path/filepath"
+	"strings"
 
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -12,6 +13,7 @@ import (
 	"github.com/mbark/punkt/mgr/generic"
 	"github.com/mbark/punkt/mgr/git"
 	"github.com/mbark/punkt/mgr/symlink"
+	"github.com/mbark/punkt/printer"
 )
 
 // ManagerConfig ...
@@ -52,42 +54,64 @@ func (rootMgr RootManager) All() []Manager {
 	return append(mgrs, rootMgr.Git(), rootMgr.Symlink())
 }
 
+func (rootMgr RootManager) names(mgrs []Manager) string {
+	var names []string
+	for i := range mgrs {
+		names = append(names, mgrs[i].Name())
+	}
+
+	return strings.Join(names, ", ")
+}
+
 // Dump ...
 func (rootMgr RootManager) Dump(mgrs []Manager) error {
+	printer.Log.Start("dump", "managers: {fg 4}%s", rootMgr.names(mgrs))
+
 	var result error
 	for i := range mgrs {
+		printer.Log.Progress(i, len(mgrs), "running dump for {fg 4}%s{fg 7} manager", mgrs[i].Name())
+
 		out, err := mgrs[i].Dump()
 		if err != nil {
-			result = multierror.Append(result, errors.Wrapf(err, "dump failed [manager: %s]", mgrs[i].Name()))
+			printer.Log.Error("manager failed with error {fg 1}%s", err)
+			result = multierror.Append(result, errors.Wrapf(err, "dump failed for %s", mgrs[i].Name()))
 			continue
 		}
 
 		err = file.Save(rootMgr.config.Fs, out, rootMgr.ConfigFile(mgrs[i].Name()))
 		if err != nil {
-			result = multierror.Append(result, errors.Wrapf(err, "failed to save configuration [manager: %s]", mgrs[i].Name()))
+			printer.Log.Error("failed to save configuration with error {fg 1}%s", err)
+			result = multierror.Append(result, errors.Wrapf(err, "failed to save %s configuration", mgrs[i].Name()))
 			continue
 		}
 	}
 
+	printer.Log.Done("dump", "dump finished")
 	return result
 }
 
 // Ensure ...
 func (rootMgr RootManager) Ensure(mgrs []Manager) error {
+	printer.Log.Start("ensure", "managers: {fg 4}%s", rootMgr.names(mgrs))
+
 	var result error
 	for i := range mgrs {
+		printer.Log.Progress(i, len(mgrs), "running ensure for {fg 4}%s{fg 7} manager", mgrs[i].Name())
+
 		logger := logrus.WithField("manager", mgrs[i].Name())
 		logger.Debug("running ensure")
 
 		err := mgrs[i].Ensure()
 		if err != nil {
-			result = multierror.Append(result, errors.Wrapf(err, "ensure failed [manager: %s]", mgrs[i].Name()))
+			printer.Log.Error("manager failed with error {fg 1}%s", err)
+			result = multierror.Append(result, errors.Wrapf(err, "ensure failed for %s", mgrs[i].Name()))
 			continue
 		}
 
 		symlinks, err := rootMgr.readSymlinks(mgrs[i].Name())
 		if err != nil {
-			result = multierror.Append(result, errors.Wrapf(err, "unable to get symlinks [manager: %s]", mgrs[i].Name()))
+			printer.Log.Error("failed to read stored symlinks with error {fg 1}%s", err)
+			result = multierror.Append(result, errors.Wrapf(err, "unable to get %s configured symlinks", mgrs[i].Name()))
 			continue
 		}
 
@@ -95,10 +119,17 @@ func (rootMgr RootManager) Ensure(mgrs []Manager) error {
 			expanded := rootMgr.LinkManager.Expand(symlinks[i])
 			err = rootMgr.LinkManager.Ensure(expanded)
 			if err != nil {
-				result = multierror.Append(result, errors.Wrapf(err, "unable to ensure symlink [manager: %s, symlink: %v]", mgrs[i].Name(), symlinks[i]))
+				printer.Log.Error("failed to create symlinks with error {fg 1}%s", err)
+				result = multierror.Append(result, errors.Wrapf(err, "unable to ensure %s for manager %s", symlinks[i], mgrs[i].Name()))
 				continue
 			}
 		}
+	}
+
+	if result == nil {
+		printer.Log.Done("ensure", "ensure finished")
+	} else {
+		printer.Log.Error("ensure did not successfully complete for all managers")
 	}
 
 	return result
@@ -106,13 +137,24 @@ func (rootMgr RootManager) Ensure(mgrs []Manager) error {
 
 // Update ...
 func (rootMgr RootManager) Update(mgrs []Manager) error {
+	printer.Log.Start("update", "managers: {fg 4}%s", rootMgr.names(mgrs))
+
 	var result error
 	for i := range mgrs {
+		printer.Log.Progress(i, len(mgrs), "{fg 4}%s", mgrs[i].Name())
+
 		err := mgrs[i].Update()
 		if err != nil {
-			result = multierror.Append(result, errors.Wrapf(err, "update failed [manager: %s]", mgrs[i].Name()))
+			printer.Log.Error("manager failed with error {fg 1}%s", err)
+			result = multierror.Append(result, errors.Wrapf(err, "update failed for %s", mgrs[i].Name()))
 			continue
 		}
+	}
+
+	if result == nil {
+		printer.Log.Done("update", "update finished")
+	} else {
+		printer.Log.Error("update did not successfully complete for all managers")
 	}
 
 	return result
