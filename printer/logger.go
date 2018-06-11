@@ -21,14 +21,14 @@ type logLevel struct {
 }
 
 var logLevels = map[string]logLevel{
-	"success":  logLevel{figure: usg.Get.Tick, color: 2},
-	"warning":  logLevel{figure: usg.Get.Warning, color: 3},
-	"error":    logLevel{figure: usg.Get.CrossThin, color: 1},
-	"note":     logLevel{figure: usg.Get.Bullet, color: 5},
-	"await":    logLevel{figure: usg.Get.Ellipsis, color: 6},
-	"start":    logLevel{figure: usg.Get.Play, color: 2},
-	"progress": logLevel{figure: usg.Get.CheckboxOn, color: 2},
-	"done":     logLevel{figure: usg.Get.Tick, color: 2},
+	"success":  {figure: usg.Get.Tick, color: 2},
+	"warning":  {figure: usg.Get.Warning, color: 3},
+	"error":    {figure: usg.Get.CrossThin, color: 1},
+	"note":     {figure: usg.Get.Bullet, color: 5},
+	"await":    {figure: usg.Get.Ellipsis, color: 6},
+	"start":    {figure: usg.Get.Play, color: 2},
+	"progress": {figure: usg.Get.CheckboxOn, color: 2},
+	"done":     {figure: usg.Get.Tick, color: 2},
 }
 
 // Logger ...
@@ -72,7 +72,7 @@ func prefix(label string, lvl logLevel) string {
 
 func (logger Logger) log(label, msg string, args ...interface{}) {
 	text, err := loreley.CompileAndExecuteToString(
-		fmt.Sprintf(`{fg 7} %s`, msg), nil, nil)
+		fmt.Sprintf(`{fg 7} %s{reset}`, msg), nil, nil)
 
 	if err != nil {
 		logrus.WithFields(logrus.Fields{

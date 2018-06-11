@@ -20,7 +20,7 @@ var (
 // LinkManager ...
 type LinkManager interface {
 	New(target, link string) *Symlink
-	Remove(string, string) (*Symlink, error)
+	Remove(string) (*Symlink, error)
 	Ensure(symlink *Symlink) error
 	Unexpand(symlink Symlink) *Symlink
 	Expand(symlink Symlink) *Symlink
@@ -65,15 +65,10 @@ func (mgr symlinkManager) New(target, link string) *Symlink {
 }
 
 // Remove ...
-func (mgr symlinkManager) Remove(link, target string) (*Symlink, error) {
-	foundTarget, err := mgr.config.Fs.Readlink(link)
+func (mgr symlinkManager) Remove(link string) (*Symlink, error) {
+	target, err := mgr.config.Fs.Readlink(link)
 	if err != nil {
-		logrus.WithField("link", link).WithError(err).Error("unable to readlink")
-		return nil, errors.Errorf("the given link is not a symlink: %s", link)
-	}
-
-	if foundTarget != target {
-		return nil, errors.Errorf("expected symlink target to be: %s but was: %s", target, foundTarget)
+		return nil, errors.Wrapf(err, "given link isn't a symlink")
 	}
 
 	err = mgr.config.Fs.Remove(link)

@@ -55,7 +55,10 @@ var _ = Describe("Symlink: Manager", func() {
 		linkMgr = new(symlinktest.MockLinkManager)
 		mgr.LinkManager = linkMgr
 
-		linkMgr.On("New", mock.Anything, mock.Anything).Return(new(symlink.Symlink))
+		linkMgr.On("New", mock.Anything, mock.Anything).Return(&symlink.Symlink{
+			Target: "target",
+			Link:   "link",
+		})
 		linkMgr.On("Ensure", mock.Anything).Return(nil)
 
 	})
@@ -101,7 +104,10 @@ var _ = Describe("Symlink: Manager", func() {
 		It("should ensure the symlink exists", func() {
 			linkMgr = new(symlinktest.MockLinkManager)
 			mgr.LinkManager = linkMgr
-			linkMgr.On("New", mock.Anything, mock.Anything).Return(new(symlink.Symlink))
+			linkMgr.On("New", mock.Anything, mock.Anything).Return(&symlink.Symlink{
+				Target: "target",
+				Link:   "link",
+			})
 			linkMgr.On("Ensure", mock.Anything).Return(nil)
 
 			_, err := mgr.Add(existingFile, "/some/where")
@@ -113,7 +119,10 @@ var _ = Describe("Symlink: Manager", func() {
 		It("should fail if the symlink can't be ensured", func() {
 			linkMgr = new(symlinktest.MockLinkManager)
 			mgr.LinkManager = linkMgr
-			linkMgr.On("New", mock.Anything, mock.Anything).Return(new(symlink.Symlink))
+			linkMgr.On("New", mock.Anything, mock.Anything).Return(&symlink.Symlink{
+				Target: "target",
+				Link:   "link",
+			})
 			linkMgr.On("Ensure", mock.Anything).Return(fmt.Errorf("fail"))
 
 			_, err := mgr.Add(existingFile, "/location")
@@ -159,33 +168,32 @@ var _ = Describe("Symlink: Manager", func() {
 	})
 
 	var _ = Context("Remove", func() {
-		// TODO: mocking new causes all kinds of problems
-		// It("should succeed when removing a link that was added", func() {
-		// 	s, err := mgr.Add(existingFile, "")
-		// 	Expect(err).To(BeNil())
-		// 	linkMgr.On("Remove", mock.Anything, mock.Anything).Return(s, nil)
+		It("should succeed when removing a link that was added", func() {
+			s, err := mgr.Add(existingFile, "")
+			Expect(err).To(BeNil())
+			linkMgr.On("Remove", mock.Anything).Return(s, nil)
 
-		// 	err = mgr.Remove(s.Link)
-		// 	Expect(err).To(BeNil())
+			err = mgr.Remove(existingFile)
+			Expect(err).To(BeNil())
 
-		// 	var c symlink.Config
-		// 	err = file.ReadToml(config.Fs, &c, configFile)
-		// 	Expect(err).To(BeNil())
+			var c symlink.Config
+			err = file.ReadToml(config.Fs, &c, configFile)
+			Expect(err).To(BeNil())
 
-		// 	Expect(c.Symlinks).To(BeEmpty())
-		// })
+			Expect(c.Symlinks).To(BeEmpty())
+		})
 
-		// It("should succeed if the config file doesn't exist", func() {
-		// 	linkMgr.On("Remove", mock.Anything).Return(new(symlink.Symlink), nil)
-		// 	Expect(mgr.Remove(existingFile)).To(Succeed())
-		// })
+		It("should succeed if the config file doesn't exist", func() {
+			linkMgr.On("Remove", mock.Anything).Return(new(symlink.Symlink), nil)
+			Expect(mgr.Remove(existingFile)).To(Succeed())
+		})
 
-		It("should fail if the symlink isn't stored in the config file", func() {
+		It("should succeed even if the symlink isn't stored in the config file", func() {
 			linkMgr.On("Remove", mock.Anything).Return(new(symlink.Symlink), nil)
 			_, err := mgr.Add(existingFile, "/some/where")
 			Expect(err).To(BeNil())
 
-			Expect(mgr.Remove(existingFile)).NotTo(Succeed())
+			Expect(mgr.Remove(existingFile)).To(Succeed())
 		})
 
 		It("should fail and not remove the link if it can't remove it", func() {
@@ -196,17 +204,17 @@ var _ = Describe("Symlink: Manager", func() {
 			Expect(mgr.Remove(s.Link)).NotTo(Succeed())
 		})
 
-		// It("should handle relative paths", func() {
-		// 	logrus.SetLevel(logrus.DebugLevel)
-		// 	mgr.Add(existingFile, "")
+		It("should handle relative paths", func() {
+			linkMgr.On("Remove", mock.Anything).Return(new(symlink.Symlink), nil)
+			mgr.Add(existingFile, "")
 
-		// 	relPath, err := filepath.Rel(config.WorkingDir, existingFile)
-		// 	Expect(err).To(BeNil())
+			relPath, err := filepath.Rel(config.WorkingDir, existingFile)
+			Expect(err).To(BeNil())
 
-		// 	Expect(mgr.Remove(relPath)).To(Succeed())
+			Expect(mgr.Remove(relPath)).To(Succeed())
 
-		// 	linkMgr.AssertCalled(GinkgoT(), "New", "", existingFile)
-		// })
+			linkMgr.AssertCalled(GinkgoT(), "Remove", existingFile)
+		})
 
 		It("should fail if the file doesn't exist", func() {
 			Expect(mgr.Remove("/non/existant")).NotTo(Succeed())

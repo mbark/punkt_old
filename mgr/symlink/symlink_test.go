@@ -86,7 +86,7 @@ var _ = Describe("Symlink: Link Manager", func() {
 			s := mgr.New("", link)
 			Expect(mgr.Ensure(s)).To(Succeed())
 
-			_, err := mgr.Remove(s.Link, s.Target)
+			_, err := mgr.Remove(s.Link)
 			Expect(err).To(BeNil())
 
 			_, err = config.Fs.Readlink(link)
@@ -96,7 +96,7 @@ var _ = Describe("Symlink: Link Manager", func() {
 		})
 
 		It("should fail if given link isn't a symlink", func() {
-			_, err := mgr.Remove(link, "")
+			_, err := mgr.Remove(link)
 			Expect(err).NotTo(BeNil())
 		})
 	})

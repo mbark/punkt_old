@@ -34,6 +34,33 @@ func (symlink Symlink) String() string {
 	return fmt.Sprintf("%s -> %s", symlink.Link, symlink.Target)
 }
 
+// UnmarshalTOML unmarshals a map of link -> target
+func (config *Config) UnmarshalTOML(data interface{}) error {
+	links, _ := data.(map[string]interface{})
+	for link, val := range links {
+		target, _ := val.(string)
+
+		s := Symlink{
+			Link:   link,
+			Target: target,
+		}
+
+		config.Symlinks = append(config.Symlinks, s)
+	}
+
+	return nil
+}
+
+// AsMap returns the configuration as a map, which is the format the
+// symlinks should be stored in..
+func (config Config) AsMap() map[string]string {
+	mapping := make(map[string]string)
+	for _, s := range config.Symlinks {
+		mapping[s.Link] = s.Target
+	}
+	return mapping
+}
+
 // NewManager ...
 func NewManager(c conf.Config, configFile string) *Manager {
 	return &Manager{
@@ -54,12 +81,15 @@ func (mgr Manager) Add(target, newLocation string) (*Symlink, error) {
 	symlink := mgr.LinkManager.New(newLocation, absTarget)
 	err = mgr.LinkManager.Ensure(symlink)
 	if err != nil {
+		printer.Log.Error("failed to create symlink: {fg 1}%s", err)
 		return nil, errors.Wrapf(err, "failed to ensure %s exists", symlink)
 	}
 
 	storedLink, err := mgr.addToConfiguration(symlink)
 	if err == nil {
 		printer.Log.Success("symlink added: {fg 2}%s", storedLink)
+	} else {
+		printer.Log.Error("failed to add symlink: {fg 1}%s", err)
 	}
 
 	return symlink, err
@@ -73,28 +103,7 @@ func (mgr Manager) Remove(link string) error {
 		return err
 	}
 
-	config, err := mgr.readConfiguration()
-	if err != nil && err != file.ErrNoSuchFile {
-		printer.Log.Error("unable to read configuration file, error was: {fg 1}%s", err)
-	}
-
-	link = path.UnexpandHome(absLink, mgr.config.UserHome)
-	var matchingSymlink *Symlink
-	for _, symlink := range config.Symlinks {
-		if symlink.Link == link {
-			printer.Log.Success("found in configuration file, target is: {fg 2}%s", symlink.Target)
-			matchingSymlink = &symlink
-		}
-	}
-
-	if matchingSymlink == nil {
-		printer.Log.Error("unable to find symlink in configuration file: {fg 1}%s", path.UnexpandHome(mgr.configFile, mgr.config.UserHome))
-		return errors.Errorf("unable to find link %s in configuration", link)
-	}
-
-	symlink := mgr.LinkManager.Expand(*matchingSymlink)
-
-	s, err := mgr.LinkManager.Remove(absLink, symlink.Target)
+	s, err := mgr.LinkManager.Remove(absLink)
 	if err != nil {
 		printer.Log.Error("failed to remove link, error was: {fg 1}%s", err)
 		err = errors.Wrapf(err, "failed to remove link %s", link)
@@ -103,7 +112,11 @@ func (mgr Manager) Remove(link string) error {
 
 	removedLink, err := mgr.removeFromConfiguration(*s)
 	if err == nil {
-		printer.Log.Success("symlink removed: {fg 2}%s", removedLink)
+		if removedLink != nil {
+			printer.Log.Success("symlink removed: {fg 2}%s", removedLink)
+		}
+	} else {
+		printer.Log.Error("failed to remove symlink: {fg 1}%s", err)
 	}
 
 	return err
@@ -115,8 +128,7 @@ func (mgr Manager) readConfiguration() (Config, error) {
 	if err != nil {
 		logger := logrus.WithField("configFile", mgr.configFile).WithError(err)
 		if err == file.ErrNoSuchFile {
-			location := path.UnexpandHome(mgr.configFile, mgr.config.UserHome)
-			printer.Log.Note("no symlink configuration file at {fg 5}%s", location)
+			printer.Log.Note("no symlink configuration file at {fg 5}%s", path.UnexpandHome(mgr.configFile, mgr.config.UserHome))
 			logger.Warn("no configuration file found")
 		} else {
 			logger.Error("unable to read symlink configuration file")
@@ -145,7 +157,7 @@ func (mgr Manager) addToConfiguration(new *Symlink) (*Symlink, error) {
 	saved.Symlinks = append(saved.Symlinks, *unexpanded)
 
 	logrus.WithField("symlinks", saved).Debug("storing updated list of symlinks")
-	return unexpanded, file.SaveToml(mgr.config.Fs, saved, mgr.configFile)
+	return unexpanded, file.SaveToml(mgr.config.Fs, saved.AsMap(), mgr.configFile)
 }
 
 func (mgr Manager) removeFromConfiguration(symlink Symlink) (*Symlink, error) {
@@ -155,7 +167,7 @@ func (mgr Manager) removeFromConfiguration(symlink Symlink) (*Symlink, error) {
 		logrus.WithFields(logrus.Fields{
 			"configFile": mgr.configFile,
 		}).WithError(err).Warn("no configuration file found, configuration won't be updated")
-		// TODO: return a special error for this case
+		printer.Log.Warning("no symlink configuration found")
 		return nil, nil
 	}
 
@@ -176,11 +188,12 @@ func (mgr Manager) removeFromConfiguration(symlink Symlink) (*Symlink, error) {
 			"symlink": symlink,
 			"config":  config,
 		}).Warn("symlink not found in configuration, not removing")
+		printer.Log.Warning("symlink not found in configuration, nothing to remove")
 		return unexpanded, nil
 	}
 
 	config.Symlinks = append(config.Symlinks[:index], config.Symlinks[index+1:]...)
-	return unexpanded, file.SaveToml(mgr.config.Fs, config, mgr.configFile)
+	return unexpanded, file.SaveToml(mgr.config.Fs, config.AsMap(), mgr.configFile)
 }
 
 // Name ...
