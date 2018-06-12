@@ -34,6 +34,18 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/hashicorp/errwrap"
+  packages = ["."]
+  revision = "7554cd9344cec97297fa6649b055a8c98c2a1e55"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/hashicorp/go-multierror"
+  packages = ["."]
+  revision = "b7773ae218740a7be65057fc60b366a49b538a44"
+
+[[projects]]
+  branch = "master"
   name = "github.com/hashicorp/hcl"
   packages = [
     ".",
@@ -60,6 +72,12 @@
   name = "github.com/jbenet/go-context"
   packages = ["io"]
   revision = "d14ea06fba99483203c19d92cfcd13ebe73135f4"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/julienroland/usg"
+  packages = ["."]
+  revision = "cb52eabb3d8424c84bd8a5e7347e07988da26c66"
 
 [[projects]]
   name = "github.com/kevinburke/ssh_config"
@@ -164,6 +182,12 @@
   packages = ["difflib"]
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
   version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/reconquest/loreley"
+  packages = ["."]
+  revision = "2ab6b7470a54bfa9b5b0289f9b4e8fc4839838f7"
 
 [[projects]]
   name = "github.com/sergi/go-diff"
@@ -399,6 +423,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c9588d64fc24e8ffc32e1fc572d6950ca496ef3e1b479369070a6e2458a1d8fa"
+  inputs-digest = "784686431eb086fd5fa7ce1fa02511c7ec1508c336375511ae921bd7c38c7785"
   solver-name = "gps-cdcl"
   solver-version = 1

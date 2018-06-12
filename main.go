@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/mbark/punkt/cmd"
+	"github.com/mbark/punkt/cmd/punkt"
 )
 
 func main() {
-	cmd.Execute()
+	punkt.Execute()
 }

@@ -26,6 +26,11 @@ var _ = Describe("CLI-API", func() {
 			expectSuccess(cmd)
 		}
 	})
+
+	It("should have a --version command", func() {
+		cmd := exec.Command("./punkt", "--version")
+		expectSuccess(cmd)
+	})
 })
 
 func expectSuccess(cmd *exec.Cmd) {
