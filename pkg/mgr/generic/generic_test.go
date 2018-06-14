@@ -12,8 +12,7 @@ import (
 	"github.com/mbark/punkt/pkg/conf"
 	"github.com/mbark/punkt/pkg/mgr/generic"
 	"github.com/mbark/punkt/pkg/run"
-	"github.com/mbark/punkt/pkg/run/runtest"
-	"github.com/mbark/punkt/pkg/test"
+	"github.com/mbark/punkt/testmock"
 )
 
 func TestMgr(t *testing.T) {
@@ -29,8 +28,8 @@ var _ = Describe("Generic Manager", func() {
 	var configFile string
 
 	BeforeEach(func() {
-		_, config = test.MockSetup()
-		run.Commander = runtest.FakeCommand("TestGenericHelperProcess")
+		_, config = testmock.Setup()
+		run.Commander = testmock.FakeCommand("TestGenericHelperProcess")
 
 		managers := make(map[string]map[string]string)
 		managers[name] = make(map[string]string)
@@ -53,7 +52,7 @@ var _ = Describe("Generic Manager", func() {
 		})
 
 		It("should fail if the command fails", func() {
-			run.Commander = runtest.FakeWithEnvCommand("TestGenericHelperProcess", "FAILING=true")
+			run.Commander = testmock.FakeWithEnvCommand("TestGenericHelperProcess", "FAILING=true")
 			mgr = generic.NewManager(config, configFile, name)
 			_, err := mgr.Dump()
 
@@ -77,7 +76,7 @@ var _ = Describe("Generic Manager", func() {
 		})
 
 		It("should fail if the command fails", func() {
-			run.Commander = runtest.FakeWithEnvCommand("TestGenericHelperProcess", "FAILING=true")
+			run.Commander = testmock.FakeWithEnvCommand("TestGenericHelperProcess", "FAILING=true")
 			mgr = generic.NewManager(config, configFile, name)
 			err := mgr.Update()
 
@@ -92,7 +91,7 @@ var _ = Describe("Generic Manager", func() {
 		})
 
 		It("should fail if the command fails", func() {
-			run.Commander = runtest.FakeWithEnvCommand("TestGenericHelperProcess", "FAILING=true")
+			run.Commander = testmock.FakeWithEnvCommand("TestGenericHelperProcess", "FAILING=true")
 			mgr = generic.NewManager(config, configFile, name)
 			err := mgr.Ensure()
 
@@ -102,7 +101,7 @@ var _ = Describe("Generic Manager", func() {
 })
 
 func TestGenericHelperProcess(t *testing.T) {
-	cmd, args, err := runtest.VerifyHelperProcess()
+	cmd, args, err := testmock.VerifyHelperProcess()
 	if err != nil {
 		return
 	}

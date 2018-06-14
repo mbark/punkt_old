@@ -14,8 +14,7 @@ import (
 	"github.com/mbark/punkt/pkg/fs"
 	"github.com/mbark/punkt/pkg/mgr"
 	"github.com/mbark/punkt/pkg/mgr/symlink"
-	"github.com/mbark/punkt/pkg/mgr/symlink/symlinktest"
-	"github.com/mbark/punkt/pkg/test"
+	"github.com/mbark/punkt/testmock"
 )
 
 type managerConfig struct {
@@ -55,13 +54,13 @@ const name = "foo"
 
 var _ = Describe("Manager", func() {
 	var mockMgr *mockManager
-	var linkMgr *symlinktest.MockLinkManager
+	var linkMgr *testmock.LinkManager
 	var snapshot fs.Snapshot
 	var config conf.Config
 	var root *mgr.RootManager
 
 	BeforeEach(func() {
-		snapshot, config = test.MockSetup()
+		snapshot, config = testmock.Setup()
 
 		mgrs := make(map[string]map[string]string)
 		mgrs[name] = make(map[string]string)
@@ -72,7 +71,7 @@ var _ = Describe("Manager", func() {
 		mockMgr = new(mockManager)
 		mockMgr.On("Name", mock.Anything).Return(name)
 
-		linkMgr = new(symlinktest.MockLinkManager)
+		linkMgr = new(testmock.LinkManager)
 		root.LinkManager = linkMgr
 	})
 

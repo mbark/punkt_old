@@ -12,8 +12,7 @@ import (
 	"github.com/mbark/punkt/pkg/conf"
 	"github.com/mbark/punkt/pkg/fs"
 	"github.com/mbark/punkt/pkg/mgr/symlink"
-	"github.com/mbark/punkt/pkg/mgr/symlink/symlinktest"
-	"github.com/mbark/punkt/pkg/test"
+	"github.com/mbark/punkt/testmock"
 )
 
 func TestSymlink(t *testing.T) {
@@ -24,13 +23,13 @@ func TestSymlink(t *testing.T) {
 var _ = Describe("Symlink: Manager", func() {
 	var snapshot fs.Snapshot
 	var config conf.Config
-	var linkMgr *symlinktest.MockLinkManager
+	var linkMgr *testmock.LinkManager
 	var mgr *symlink.Manager
 	var configFile string
 	var existingFile string
 
 	BeforeEach(func() {
-		snapshot, config = test.MockSetup()
+		snapshot, config = testmock.Setup()
 
 		existingFile = filepath.Join(snapshot.WorkingDir, ".configFile")
 		_, err := snapshot.Fs.Create(existingFile)
@@ -39,7 +38,7 @@ var _ = Describe("Symlink: Manager", func() {
 		configFile = filepath.Join(config.PunktHome, "symlinks.toml")
 
 		mgr = symlink.NewManager(config, snapshot, configFile)
-		linkMgr = new(symlinktest.MockLinkManager)
+		linkMgr = new(testmock.LinkManager)
 		mgr.LinkManager = linkMgr
 
 		linkMgr.On("New", mock.Anything, mock.Anything).Return(&symlink.Symlink{
@@ -89,7 +88,7 @@ var _ = Describe("Symlink: Manager", func() {
 		})
 
 		It("should ensure the symlink exists", func() {
-			linkMgr = new(symlinktest.MockLinkManager)
+			linkMgr = new(testmock.LinkManager)
 			mgr.LinkManager = linkMgr
 			linkMgr.On("New", mock.Anything, mock.Anything).Return(&symlink.Symlink{
 				Target: "target",
@@ -104,7 +103,7 @@ var _ = Describe("Symlink: Manager", func() {
 		})
 
 		It("should fail if the symlink can't be ensured", func() {
-			linkMgr = new(symlinktest.MockLinkManager)
+			linkMgr = new(testmock.LinkManager)
 			mgr.LinkManager = linkMgr
 			linkMgr.On("New", mock.Anything, mock.Anything).Return(&symlink.Symlink{
 				Target: "target",

@@ -1,4 +1,4 @@
-package runtest
+package testmock
 
 import (
 	"errors"

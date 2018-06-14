@@ -16,8 +16,7 @@ import (
 	"github.com/mbark/punkt/pkg/mgr/git"
 	"github.com/mbark/punkt/pkg/mgr/symlink"
 	"github.com/mbark/punkt/pkg/run"
-	"github.com/mbark/punkt/pkg/run/runtest"
-	"github.com/mbark/punkt/pkg/test"
+	"github.com/mbark/punkt/testmock"
 )
 
 func TestGit(t *testing.T) {
@@ -52,8 +51,8 @@ var _ = Describe("Git: Manager", func() {
 	var configFile string
 
 	BeforeEach(func() {
-		snapshot, config = test.MockSetup()
-		run.Commander = runtest.FakeCommand("TestGitHelperProcess")
+		snapshot, config = testmock.Setup()
+		run.Commander = testmock.FakeCommand("TestGitHelperProcess")
 
 		configFile = filepath.Join(config.PunktHome, "git.toml")
 		mgr = git.NewManager(config, snapshot, configFile)
@@ -82,7 +81,7 @@ var _ = Describe("Git: Manager", func() {
 		})
 
 		It("should contain the files to symlink", func() {
-			run.Commander = runtest.FakeWithEnvCommand("TestGitHelperProcess", "WITH_GITCONFIG=true")
+			run.Commander = testmock.FakeWithEnvCommand("TestGitHelperProcess", "WITH_GITCONFIG=true")
 			mgr = git.NewManager(config, snapshot, configFile)
 
 			expected := []symlink.Symlink{
@@ -101,7 +100,7 @@ var _ = Describe("Git: Manager", func() {
 		})
 
 		It("should return no symlinks if finding the config files fails", func() {
-			run.Commander = runtest.FakeWithEnvCommand("TestGitHelperProcess", "FAILING=true")
+			run.Commander = testmock.FakeWithEnvCommand("TestGitHelperProcess", "FAILING=true")
 			mgr = git.NewManager(config, snapshot, configFile)
 
 			dumped, err := mgr.Dump()
@@ -189,7 +188,7 @@ var _ = Describe("Git: Manager", func() {
 })
 
 func TestGitHelperProcess(t *testing.T) {
-	cmd, args, err := runtest.VerifyHelperProcess()
+	cmd, args, err := testmock.VerifyHelperProcess()
 	if err != nil {
 		return
 	}

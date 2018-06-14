@@ -10,7 +10,7 @@ import (
 
 	"github.com/mbark/punkt/pkg/conf"
 	"github.com/mbark/punkt/pkg/fs"
-	"github.com/mbark/punkt/pkg/test"
+	"github.com/mbark/punkt/testmock"
 )
 
 func TestConf(t *testing.T) {
@@ -24,7 +24,7 @@ var _ = Describe("Manager", func() {
 	var configFile string
 
 	BeforeEach(func() {
-		snapshot, _ = test.MockSetup()
+		snapshot, _ = testmock.Setup()
 		configFile = filepath.Join(snapshot.WorkingDir, "config.toml")
 
 		savedConfig = make(map[string]string)
