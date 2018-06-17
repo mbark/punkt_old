@@ -35,7 +35,7 @@ type Manager struct {
 
 // Config ...
 type Config struct {
-	Symlinks     []symlink.Symlink
+	Symlinks     symlink.Config
 	Repositories []Repo
 }
 
@@ -149,9 +149,12 @@ func (mgr Manager) Dump() (string, error) {
 	}
 
 	// TODO: encode symlinks as a map instead
-	config := Config{
-		Symlinks:     symlinks,
-		Repositories: []Repo{},
+	config := struct {
+		Symlinks     map[string]string
+		Repositories []Repo
+	}{
+		symlink.Config{Symlinks: symlinks}.AsMap(),
+		[]Repo{},
 	}
 
 	var out bytes.Buffer

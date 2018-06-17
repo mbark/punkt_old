@@ -17,10 +17,6 @@ import (
 	"github.com/mbark/punkt/testmock"
 )
 
-type managerConfig struct {
-	Symlinks []symlink.Symlink
-}
-
 type mockManager struct {
 	mock.Mock
 }
@@ -146,7 +142,9 @@ var _ = Describe("Manager", func() {
 				Target: "/target",
 			}
 
-			mgrConfig := managerConfig{Symlinks: []symlink.Symlink{expected}}
+			mgrConfig := mgr.ManagerConfig{Symlinks: symlink.Config{
+				Symlinks: []symlink.Symlink{expected},
+			}}
 
 			err := snapshot.SaveToml(mgrConfig, root.ConfigFile(name))
 			Expect(err).To(BeNil())
@@ -164,7 +162,9 @@ var _ = Describe("Manager", func() {
 				Target: "/target",
 			}
 
-			mgrConfig := managerConfig{Symlinks: []symlink.Symlink{expected}}
+			mgrConfig := mgr.ManagerConfig{Symlinks: symlink.Config{
+				Symlinks: []symlink.Symlink{expected}},
+			}
 
 			err := snapshot.SaveToml(mgrConfig, root.ConfigFile(name))
 			Expect(err).To(BeNil())

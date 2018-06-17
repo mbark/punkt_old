@@ -76,7 +76,7 @@ var _ = Describe("Git: Manager", func() {
 			_, err = toml.Decode(dumped, &actual)
 			Expect(err).To(BeNil())
 
-			Expect(actual.Symlinks).Should(BeEmpty())
+			Expect(actual.Symlinks.Symlinks).Should(BeEmpty())
 			Expect(actual.Repositories).Should(BeEmpty())
 		})
 
@@ -96,7 +96,7 @@ var _ = Describe("Git: Manager", func() {
 			_, err = toml.Decode(dumped, &actual)
 			Expect(err).To(BeNil())
 
-			Expect(actual.Symlinks).Should(ConsistOf(expected))
+			Expect(actual.Symlinks.Symlinks).Should(ConsistOf(expected))
 		})
 
 		It("should return no symlinks if finding the config files fails", func() {
@@ -110,7 +110,7 @@ var _ = Describe("Git: Manager", func() {
 			_, err = toml.Decode(dumped, &actual)
 			Expect(err).To(BeNil())
 
-			Expect(actual.Symlinks).Should(BeEmpty())
+			Expect(actual.Symlinks.Symlinks).Should(BeEmpty())
 		})
 	})
 

@@ -18,7 +18,7 @@ import (
 
 // ManagerConfig ...
 type ManagerConfig struct {
-	Symlinks []symlink.Symlink
+	Symlinks symlink.Config
 }
 
 // Manager ...
@@ -110,19 +110,19 @@ func (rootMgr RootManager) Ensure(mgrs []Manager) error {
 			continue
 		}
 
-		symlinks, err := rootMgr.readSymlinks(mgrs[i].Name())
+		config, err := rootMgr.readSymlinks(mgrs[i].Name())
 		if err != nil {
 			printer.Log.Error("failed to read stored symlinks with error {fg 1}%s", err)
 			result = multierror.Append(result, errors.Wrapf(err, "unable to get %s configured symlinks", mgrs[i].Name()))
 			continue
 		}
 
-		for i := range symlinks {
-			expanded := rootMgr.LinkManager.Expand(symlinks[i])
+		for i := range config.Symlinks {
+			expanded := rootMgr.LinkManager.Expand(config.Symlinks[i])
 			err = rootMgr.LinkManager.Ensure(expanded)
 			if err != nil {
 				printer.Log.Error("failed to create symlinks with error {fg 1}%s", err)
-				result = multierror.Append(result, errors.Wrapf(err, "unable to ensure %s for manager %s", symlinks[i], mgrs[i].Name()))
+				result = multierror.Append(result, errors.Wrapf(err, "unable to ensure %s for manager %s", config.Symlinks[i], mgrs[i].Name()))
 				continue
 			}
 		}
@@ -162,18 +162,18 @@ func (rootMgr RootManager) Update(mgrs []Manager) error {
 	return result
 }
 
-func (rootMgr RootManager) readSymlinks(name string) ([]symlink.Symlink, error) {
+func (rootMgr RootManager) readSymlinks(name string) (*symlink.Config, error) {
 	var config ManagerConfig
 	err := rootMgr.snapshot.ReadToml(&config, rootMgr.ConfigFile(name))
 	if err != nil {
 		if err == fs.ErrNoSuchFile {
-			return []symlink.Symlink{}, nil
+			return &symlink.Config{Symlinks: []symlink.Symlink{}}, nil
 		}
 
 		return nil, err
 	}
 
-	return config.Symlinks, nil
+	return &config.Symlinks, nil
 }
 
 // Git ...
