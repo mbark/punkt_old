@@ -58,7 +58,10 @@ func prefix(label string, lvl logLevel) string {
 		padding = 0
 	}
 
-	var msg = "{fg 0}[punkt]  {fg %d}{.figure}  {underline}{.label}{reset}%" + strconv.Itoa(padding) + "s"
+	var msg = "<fg 0>[punkt]  <fg %d><.figure>  <underline><.label><reset>%" + strconv.Itoa(padding) + "s"
+
+	loreley.DelimLeft = "<"
+	loreley.DelimRight = ">"
 
 	prefix, _ := loreley.CompileAndExecuteToString(
 		fmt.Sprintf(msg, lvl.color, ""),
@@ -70,8 +73,7 @@ func prefix(label string, lvl logLevel) string {
 }
 
 func (logger Logger) log(label, msg string, args ...interface{}) {
-	text, err := loreley.CompileAndExecuteToString(
-		fmt.Sprintf(` %s{reset}`, msg), nil, nil)
+	text, err := loreley.CompileAndExecuteToString(fmt.Sprintf(` %s<reset>`, msg), nil, nil)
 
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
@@ -116,7 +118,7 @@ func (logger Logger) Start(timer, msg string, args ...interface{}) {
 // Progress ...
 func (logger Logger) Progress(current, total int, msg string, args ...interface{}) {
 	args = append(args, current+1, total)
-	logger.log("progress", msg+" {reset}{fg 0}[%d/%d]", args...)
+	logger.log("progress", msg+" <reset><fg 0>[%d/%d]", args...)
 }
 
 // Done ...
@@ -124,5 +126,5 @@ func (logger Logger) Done(timer, msg string, args ...interface{}) {
 	timeTaken := time.Since(logger.timers[timer])
 
 	args = append(args, timeTaken)
-	logger.log("done", msg+" {reset}{fg 0}(%s){reset}", args...)
+	logger.log("done", msg+" <reset><fg 0>(%s)<reset>", args...)
 }

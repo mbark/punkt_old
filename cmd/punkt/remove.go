@@ -9,13 +9,15 @@ import (
 
 var removeCmd = &cobra.Command{
 	Use:   "remove",
-	Short: "remove a git repository or a file as a symlink",
+	Short: "remove a {symlink,repository} from your dotfiles",
 }
 
 var removeSymlinkCmd = &cobra.Command{
 	Use:   "symlink",
-	Short: "remove symlink and move file back",
-	Args:  cobra.ExactArgs(1),
+	Short: "Remove the symlink from your dotfiles and put the file back",
+	Long: `Remove the symlink form your dotfiles' symlink configuration file,
+removes the symlik and moves the file back to its original position.`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		removeSymlink(cmd, args)
 	},
@@ -23,7 +25,8 @@ var removeSymlinkCmd = &cobra.Command{
 
 var removeGitCmd = &cobra.Command{
 	Use:   "repository",
-	Short: "remove the given repository from your dotfiles-managed git repos",
+	Short: "Remove the git repository from your dotfiles",
+	Long:  `Remove the git repository from your dotfiles' git configuration file`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		removeGit(cmd, args)

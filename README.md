@@ -10,3 +10,8 @@ Project goals:
 - Easily bootstrap a new environment on a clean system;
 - Reliable and robust, when something fails it should do so with clear error messages;
 - Good looking CLI-app that you want to use.
+
+## v1
+- [ ] integration tests
+- [ ] documentation
+- [ ] examples

@@ -75,22 +75,22 @@ func NewManager(c conf.Config, snapshot fs.Snapshot, configFile string) *Manager
 func (mgr Manager) Add(target, newLocation string) (*Symlink, error) {
 	absTarget, err := mgr.snapshot.AsAbsolute(target)
 	if err != nil {
-		printer.Log.Error("target file or directory does not exist: {fg 1}%s", target)
+		printer.Log.Error("target file or directory does not exist: <fg 1>%s", target)
 		return nil, err
 	}
 
 	symlink := mgr.LinkManager.New(newLocation, absTarget)
 	err = mgr.LinkManager.Ensure(symlink)
 	if err != nil {
-		printer.Log.Error("failed to create symlink: {fg 1}%s", err)
+		printer.Log.Error("failed to create symlink: <fg 1>%s", err)
 		return nil, errors.Wrapf(err, "failed to ensure %s exists", symlink)
 	}
 
 	storedLink, err := mgr.addToConfiguration(symlink)
 	if err == nil {
-		printer.Log.Success("symlink added: {fg 2}%s", storedLink)
+		printer.Log.Success("symlink added: <fg 2>%s", storedLink)
 	} else {
-		printer.Log.Error("failed to add symlink: {fg 1}%s", err)
+		printer.Log.Error("failed to add symlink: <fg 1>%s", err)
 	}
 
 	return symlink, err
@@ -100,13 +100,13 @@ func (mgr Manager) Add(target, newLocation string) (*Symlink, error) {
 func (mgr Manager) Remove(link string) error {
 	absLink, err := mgr.snapshot.AsAbsolute(link)
 	if err != nil {
-		printer.Log.Error("file does not exist: {fg 1}%s", link)
+		printer.Log.Error("file does not exist: <fg 1>%s", link)
 		return err
 	}
 
 	s, err := mgr.LinkManager.Remove(absLink)
 	if err != nil {
-		printer.Log.Error("failed to remove link, error was: {fg 1}%s", err)
+		printer.Log.Error("failed to remove link, error was: <fg 1>%s", err)
 		err = errors.Wrapf(err, "failed to remove link %s", link)
 		return err
 	}
@@ -114,10 +114,10 @@ func (mgr Manager) Remove(link string) error {
 	removedLink, err := mgr.removeFromConfiguration(*s)
 	if err == nil {
 		if removedLink != nil {
-			printer.Log.Success("symlink removed: {fg 2}%s", removedLink)
+			printer.Log.Success("symlink removed: <fg 2>%s", removedLink)
 		}
 	} else {
-		printer.Log.Error("failed to remove symlink: {fg 1}%s", err)
+		printer.Log.Error("failed to remove symlink: <fg 1>%s", err)
 	}
 
 	return err
@@ -129,7 +129,7 @@ func (mgr Manager) readConfiguration() (Config, error) {
 	if err != nil {
 		logger := logrus.WithField("configFile", mgr.configFile).WithError(err)
 		if err == fs.ErrNoSuchFile {
-			printer.Log.Note("no symlink configuration file at {fg 5}%s", mgr.snapshot.UnexpandHome(mgr.configFile))
+			printer.Log.Note("no symlink configuration file at <fg 5>%s", mgr.snapshot.UnexpandHome(mgr.configFile))
 			logger.Warn("no configuration file found")
 		} else {
 			logger.Error("unable to read symlink configuration file")

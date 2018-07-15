@@ -67,22 +67,22 @@ func (rootMgr RootManager) names(mgrs []Manager) string {
 
 // Dump ...
 func (rootMgr RootManager) Dump(mgrs []Manager) error {
-	printer.Log.Start("dump", "managers: {fg 2}%s", rootMgr.names(mgrs))
+	printer.Log.Start("dump", "managers: <fg 2>%s", rootMgr.names(mgrs))
 
 	var result error
 	for i := range mgrs {
-		printer.Log.Progress(i, len(mgrs), "running dump for {fg 2}%s manager", mgrs[i].Name())
+		printer.Log.Progress(i, len(mgrs), "running dump for <fg 2>%s manager", mgrs[i].Name())
 
 		out, err := mgrs[i].Dump()
 		if err != nil {
-			printer.Log.Error("manager failed with error {fg 1}%s", err)
+			printer.Log.Error("manager failed with error <fg 1>%s", err)
 			result = multierror.Append(result, errors.Wrapf(err, "dump failed for %s", mgrs[i].Name()))
 			continue
 		}
 
 		err = rootMgr.snapshot.Save(out, rootMgr.ConfigFile(mgrs[i].Name()))
 		if err != nil {
-			printer.Log.Error("failed to save configuration with error {fg 1}%s", err)
+			printer.Log.Error("failed to save configuration with error <fg 1>%s", err)
 			result = multierror.Append(result, errors.Wrapf(err, "failed to save %s configuration", mgrs[i].Name()))
 			continue
 		}
@@ -94,25 +94,25 @@ func (rootMgr RootManager) Dump(mgrs []Manager) error {
 
 // Ensure ...
 func (rootMgr RootManager) Ensure(mgrs []Manager) error {
-	printer.Log.Start("ensure", "managers: {fg 2}%s", rootMgr.names(mgrs))
+	printer.Log.Start("ensure", "managers: <fg 2>%s", rootMgr.names(mgrs))
 
 	var result error
 	for i := range mgrs {
-		printer.Log.Progress(i, len(mgrs), "running ensure for {fg 2}%s manager", mgrs[i].Name())
+		printer.Log.Progress(i, len(mgrs), "running ensure for <fg 2>%s manager", mgrs[i].Name())
 
 		logger := logrus.WithField("manager", mgrs[i].Name())
 		logger.Debug("running ensure")
 
 		err := mgrs[i].Ensure()
 		if err != nil {
-			printer.Log.Error("manager failed with error {fg 1}%s", err)
+			printer.Log.Error("manager failed with error <fg 1>%s", err)
 			result = multierror.Append(result, errors.Wrapf(err, "ensure failed for %s", mgrs[i].Name()))
 			continue
 		}
 
 		config, err := rootMgr.readSymlinks(mgrs[i].Name())
 		if err != nil {
-			printer.Log.Error("failed to read stored symlinks with error {fg 1}%s", err)
+			printer.Log.Error("failed to read stored symlinks with error <fg 1>%s", err)
 			result = multierror.Append(result, errors.Wrapf(err, "unable to get %s configured symlinks", mgrs[i].Name()))
 			continue
 		}
@@ -121,7 +121,7 @@ func (rootMgr RootManager) Ensure(mgrs []Manager) error {
 			expanded := rootMgr.LinkManager.Expand(config.Symlinks[i])
 			err = rootMgr.LinkManager.Ensure(expanded)
 			if err != nil {
-				printer.Log.Error("failed to create symlinks with error {fg 1}%s", err)
+				printer.Log.Error("failed to create symlinks with error <fg 1>%s", err)
 				result = multierror.Append(result, errors.Wrapf(err, "unable to ensure %s for manager %s", config.Symlinks[i], mgrs[i].Name()))
 				continue
 			}
@@ -139,15 +139,15 @@ func (rootMgr RootManager) Ensure(mgrs []Manager) error {
 
 // Update ...
 func (rootMgr RootManager) Update(mgrs []Manager) error {
-	printer.Log.Start("update", "managers: {fg 2}%s", rootMgr.names(mgrs))
+	printer.Log.Start("update", "managers: <fg 2>%s", rootMgr.names(mgrs))
 
 	var result error
 	for i := range mgrs {
-		printer.Log.Progress(i, len(mgrs), "{fg 2}%s", mgrs[i].Name())
+		printer.Log.Progress(i, len(mgrs), "<fg 2>%s", mgrs[i].Name())
 
 		err := mgrs[i].Update()
 		if err != nil {
-			printer.Log.Error("manager failed with error {fg 1}%s", err)
+			printer.Log.Error("manager failed with error <fg 1>%s", err)
 			result = multierror.Append(result, errors.Wrapf(err, "update failed for %s", mgrs[i].Name()))
 			continue
 		}

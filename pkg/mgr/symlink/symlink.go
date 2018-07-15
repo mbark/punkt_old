@@ -100,7 +100,7 @@ func (mgr symlinkManager) Ensure(symlink *Symlink) error {
 	})
 
 	if mgr.exists(symlink) {
-		printer.Log.Note("symlink exists: {fg 5}%s", mgr.Unexpand(*symlink))
+		printer.Log.Note("symlink exists: <fg 5>%s", mgr.Unexpand(*symlink))
 		return nil
 	}
 
@@ -140,7 +140,7 @@ func (mgr symlinkManager) Ensure(symlink *Symlink) error {
 	}
 
 	logger.Info("creating symlink")
-	printer.Log.Note("creating symlink: {fg 2}%s", mgr.Unexpand(*symlink))
+	printer.Log.Note("creating symlink: <fg 2>%s", mgr.Unexpand(*symlink))
 	return mgr.snapshot.Fs.Symlink(symlink.Target, symlink.Link)
 }
 

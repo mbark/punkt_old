@@ -9,13 +9,20 @@ import (
 
 var addCmd = &cobra.Command{
 	Use:   "add",
-	Short: "add a git repository or a file as a symlink",
+	Short: "add a symlink or repository",
 }
 
 var addSymlinkCmd = &cobra.Command{
 	Use:   "symlink target [new-location]",
-	Short: "store target in dotfile's directory and link to it",
-	Args:  cobra.RangeArgs(1, 2),
+	Short: "Create a symlink from target to a new location and store it",
+	Long: `Create a symlink from target to a new location, which is optional and will be default
+be inferred, and save the symlink to your configured symlinks. To undo the operation
+see remove.
+
+If you don't specify a new location the new location will default to having the same
+relative path to your dotfiles directory as it currently has to your home directory
+(i.e placing ~/.config/git/ignore in ~/dotfiles/.config/git/ignore).`,
+	Args: cobra.RangeArgs(1, 2),
 	Run: func(cmd *cobra.Command, args []string) {
 		addSymlink(cmd, args)
 	},
@@ -23,7 +30,8 @@ var addSymlinkCmd = &cobra.Command{
 
 var addGitCmd = &cobra.Command{
 	Use:   "repository path",
-	Short: "add the given repository to your dotfiles-managed git repos",
+	Short: "Add the git repository to the dotfile git configuration",
+	Long:  `Add the target git repository to the configuration file for git repositories.`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		addGit(cmd, args)

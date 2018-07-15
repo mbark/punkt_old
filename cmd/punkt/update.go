@@ -8,8 +8,9 @@ import (
 
 var updateCmd = &cobra.Command{
 	Use:   "update",
-	Short: "update all packages",
-	Long:  `update all package versions`,
+	Short: "Run update for all managers",
+	Long: `Goes through all managers running update for each of them and
+also potentially updating their configuration.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		update()
 	},

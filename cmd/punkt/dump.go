@@ -8,14 +8,16 @@ import (
 )
 
 var message = strings.TrimSpace(`
-dump the current working environment to your dotfile configuration files. Doing
-this will search for symlinks and add your currently installed packages to their
-corresponding package-manager's config files.`)
+Dump the current working environment to your dotfile configuration.
+
+Goes through all your specified managers and for each of these dumping
+their configuration to their specific configuration files. This should
+be free of side effects.`)
 
 // ensureCmd represents the ensure command
 var dumpCmd = &cobra.Command{
 	Use:   "dump",
-	Short: "dump your current environment to config files",
+	Short: "Dump your current environment to your dotfiles directory",
 	Long:  message,
 	Run: func(cmd *cobra.Command, args []string) {
 		dump(cmd, args)

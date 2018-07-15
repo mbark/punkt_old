@@ -47,7 +47,7 @@ func readConfig(snapshot fs.Snapshot, file string) error {
 		return errors.Wrapf(err, "given config file %s does not exist", file)
 	}
 
-	printer.Log.Note("reading configuration from {fg 5}%s", snapshot.UnexpandHome(abs))
+	printer.Log.Note("reading configuration from <fg 5>%s", snapshot.UnexpandHome(abs))
 
 	f, err := snapshot.Fs.Open(abs)
 	if err != nil {
